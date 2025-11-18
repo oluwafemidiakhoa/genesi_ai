@@ -1,0 +1,17 @@
+# Python cache / venv
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Large / generated stuff
+data/
+models/
+temp_pockets/
+test_data/
+*.log
