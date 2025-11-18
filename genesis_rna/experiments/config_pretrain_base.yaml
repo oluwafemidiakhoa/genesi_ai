@@ -1,0 +1,57 @@
+# Genesis RNA Base Model Configuration
+# Standard model for most applications
+
+model:
+  vocab_size: 9
+  d_model: 512
+  n_heads: 8
+  n_layers: 8
+  dim_ff: 2048
+  max_len: 512
+  dropout: 0.1
+  attention_dropout: 0.1
+  structure_num_labels: 5
+  use_rotary_embeddings: false
+  layer_norm_eps: 1.0e-12
+  initializer_range: 0.02
+
+training:
+  # Optimization
+  batch_size: 32
+  learning_rate: 5.0e-5
+  num_epochs: 20
+  warmup_steps: 10000
+  weight_decay: 0.01
+  gradient_clip_norm: 1.0
+
+  # MLM settings
+  mlm_probability: 0.15
+
+  # Multi-task loss weights
+  mlm_loss_weight: 1.0
+  structure_loss_weight: 0.5
+  pair_loss_weight: 0.1
+
+  # Checkpointing
+  save_steps: 5000
+  eval_steps: 1000
+  logging_steps: 100
+  output_dir: "./checkpoints/base"
+
+  # Device and precision
+  device: "cuda"
+  mixed_precision: true
+  fp16: true
+
+  # Data loading
+  num_workers: 8
+  prefetch_factor: 2
+
+  # AST settings
+  use_ast: true
+  ast_target_activation: 0.4
+  ast_controller_kp: 0.01
+  ast_controller_ki: 0.001
+
+  # Reproducibility
+  seed: 42
