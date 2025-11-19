@@ -37,6 +37,48 @@ from .losses import MultiTaskLoss, compute_metrics
 from .ast_wrapper import ASTSampleSelector
 
 
+class MetricsLogger:
+    """Simple metrics logger for tracking training progress"""
+
+    def __init__(self, log_file: str):
+        self.log_file = log_file
+        self.metrics_history = []
+
+        # Write header
+        with open(log_file, 'w') as f:
+            f.write("epoch,step,phase,loss,mlm_loss,structure_loss,pair_loss,"
+                   "mlm_accuracy,structure_accuracy,pair_precision,pair_recall,pair_f1,"
+                   "learning_rate,activation_rate\n")
+
+    def log(self, epoch: int, step: int, phase: str, metrics: dict, lr: float = None, act_rate: float = None):
+        """Log metrics for a step"""
+        self.metrics_history.append({
+            'epoch': epoch,
+            'step': step,
+            'phase': phase,
+            **metrics
+        })
+
+        # Write to file
+        with open(self.log_file, 'a') as f:
+            f.write(f"{epoch},{step},{phase},")
+            f.write(f"{metrics.get('loss', '')},")
+            f.write(f"{metrics.get('mlm_loss', '')},")
+            f.write(f"{metrics.get('structure_loss', '')},")
+            f.write(f"{metrics.get('pair_loss', '')},")
+            f.write(f"{metrics.get('mlm_accuracy', '')},")
+            f.write(f"{metrics.get('structure_accuracy', '')},")
+            f.write(f"{metrics.get('pair_precision', '')},")
+            f.write(f"{metrics.get('pair_recall', '')},")
+            f.write(f"{metrics.get('pair_f1', '')},")
+            f.write(f"{lr if lr is not None else ''},")
+            f.write(f"{act_rate if act_rate is not None else ''}\n")
+
+    def get_history(self):
+        """Get metrics history"""
+        return self.metrics_history
+
+
 def setup_training(
     model_config: GenesisRNAConfig,
     train_config: TrainingConfig,
@@ -69,7 +111,13 @@ def setup_training(
         mlm_weight=train_config.mlm_loss_weight,
         structure_weight=train_config.structure_loss_weight,
         pair_weight=train_config.pair_loss_weight,
+        use_focal_loss_for_pairs=train_config.use_focal_loss_for_pairs,
+        focal_alpha=train_config.focal_alpha,
+        focal_gamma=train_config.focal_gamma,
     )
+
+    if train_config.use_focal_loss_for_pairs:
+        print(f"Using Focal Loss for pairs (alpha={train_config.focal_alpha}, gamma={train_config.focal_gamma})")
 
     # Create AST sample selector
     ast_selector = None
@@ -93,17 +141,38 @@ def get_lr_scheduler(
     optimizer,
     num_training_steps: int,
     num_warmup_steps: int,
+    scheduler_type: str = "cosine",
+    min_lr_ratio: float = 0.1,
 ):
-    """Create learning rate scheduler with warmup"""
+    """
+    Create learning rate scheduler with warmup.
+
+    Args:
+        optimizer: Optimizer
+        num_training_steps: Total training steps
+        num_warmup_steps: Warmup steps
+        scheduler_type: 'linear', 'cosine', or 'constant'
+        min_lr_ratio: Minimum LR as ratio of peak LR (for cosine)
+    """
     from torch.optim.lr_scheduler import LambdaLR
+    import math
 
     def lr_lambda(current_step: int):
+        # Warmup phase
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
-        return max(
-            0.0,
-            float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps))
-        )
+
+        # Post-warmup phase
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
+
+        if scheduler_type == "cosine":
+            # Cosine annealing: smooth decay from 1.0 to min_lr_ratio
+            return min_lr_ratio + (1.0 - min_lr_ratio) * 0.5 * (1.0 + math.cos(math.pi * progress))
+        elif scheduler_type == "linear":
+            # Linear decay from 1.0 to 0.0
+            return max(0.0, 1.0 - progress)
+        else:  # constant
+            return 1.0
 
     return LambdaLR(optimizer, lr_lambda)
 
@@ -430,11 +499,18 @@ def main():
         optimizer,
         num_training_steps,
         train_config.warmup_steps,
+        scheduler_type=train_config.lr_scheduler_type,
+        min_lr_ratio=train_config.min_lr_ratio,
     )
+
+    # Create metrics logger
+    metrics_logger = MetricsLogger(output_dir / 'training_metrics.csv')
+    print(f"Metrics will be logged to {output_dir / 'training_metrics.csv'}")
 
     # Training loop
     print(f"\nStarting training for {train_config.num_epochs} epochs...")
     print(f"Total training steps: {num_training_steps}")
+    print(f"LR Scheduler: {train_config.lr_scheduler_type} with warmup={train_config.warmup_steps} steps")
 
     best_val_loss = float('inf')
 
@@ -457,12 +533,31 @@ def main():
         for key, value in train_metrics.items():
             print(f"  {key}: {value:.4f}")
 
+        # Log train metrics
+        metrics_logger.log(
+            epoch=epoch,
+            step=epoch * len(train_loader),
+            phase='train',
+            metrics=train_metrics,
+            lr=scheduler.get_last_lr()[0],
+            act_rate=train_metrics.get('activation_rate')
+        )
+
         # Evaluate
         val_metrics = evaluate(model, val_loader, loss_fn, device)
 
         print(f"Epoch {epoch} - Val metrics:")
         for key, value in val_metrics.items():
             print(f"  {key}: {value:.4f}")
+
+        # Log val metrics
+        metrics_logger.log(
+            epoch=epoch,
+            step=epoch * len(train_loader),
+            phase='val',
+            metrics=val_metrics,
+            lr=scheduler.get_last_lr()[0]
+        )
 
         # Save checkpoint
         if val_metrics['loss'] < best_val_loss:

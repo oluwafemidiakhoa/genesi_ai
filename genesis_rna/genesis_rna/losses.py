@@ -173,17 +173,28 @@ class MultiTaskLoss(nn.Module):
         mlm_weight: float = 1.0,
         structure_weight: float = 0.5,
         pair_weight: float = 0.1,
+        use_focal_loss_for_pairs: bool = True,
+        focal_alpha: float = 0.75,
+        focal_gamma: float = 2.0,
     ):
         """
         Args:
             mlm_weight: Weight for MLM loss
             structure_weight: Weight for structure prediction loss
             pair_weight: Weight for base-pair prediction loss
+            use_focal_loss_for_pairs: Use focal loss for pairs (handles imbalance)
+            focal_alpha: Focal loss alpha parameter
+            focal_gamma: Focal loss gamma parameter
         """
         super().__init__()
         self.mlm_weight = mlm_weight
         self.structure_weight = structure_weight
         self.pair_weight = pair_weight
+        self.use_focal_loss_for_pairs = use_focal_loss_for_pairs
+
+        # Create focal loss if enabled
+        if use_focal_loss_for_pairs:
+            self.focal_loss_fn = BinaryFocalLoss(alpha=focal_alpha, gamma=focal_gamma)
 
     def forward(
         self,
@@ -217,12 +228,19 @@ class MultiTaskLoss(nn.Module):
         # Structure loss
         loss_struct = structure_loss(outputs["struct_logits"], batch["struct_labels"])
 
-        # Pair loss
-        loss_pair = pair_loss(
-            outputs["pair_logits"],
-            batch["pair_matrix"],
-            batch.get("attention_mask")
-        )
+        # Pair loss (use focal loss if enabled for better handling of imbalance)
+        if self.use_focal_loss_for_pairs:
+            loss_pair = self.focal_loss_fn(
+                outputs["pair_logits"],
+                batch["pair_matrix"],
+                batch.get("attention_mask")
+            )
+        else:
+            loss_pair = pair_loss(
+                outputs["pair_logits"],
+                batch["pair_matrix"],
+                batch.get("attention_mask")
+            )
 
         # Combined weighted loss
         total_loss = (
@@ -292,6 +310,80 @@ class FocalLoss(nn.Module):
         focal_loss = focal_loss[valid_mask].mean()
 
         return focal_loss
+
+
+class BinaryFocalLoss(nn.Module):
+    """
+    Binary Focal Loss for handling severe class imbalance in pair prediction.
+
+    Most RNA positions don't pair, so we need to focus on hard examples.
+    FL(p_t) = -α(1-p_t)^γ log(p_t)
+    """
+
+    def __init__(self, alpha: float = 0.75, gamma: float = 2.0):
+        """
+        Args:
+            alpha: Weight for positive class (higher = more weight on actual pairs)
+            gamma: Focusing parameter (higher = more focus on hard examples)
+        """
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(
+        self,
+        logits: torch.Tensor,
+        labels: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """
+        Args:
+            logits: Predicted pair scores [batch_size, seq_len, seq_len]
+            labels: Ground truth pairs [batch_size, seq_len, seq_len]
+            attention_mask: Optional mask [batch_size, seq_len]
+
+        Returns:
+            Scalar loss
+        """
+        # Get probabilities
+        probs = torch.sigmoid(logits)
+
+        # Compute focal weight
+        # For positive examples: (1-p)^gamma
+        # For negative examples: p^gamma
+        focal_weight = torch.where(
+            labels == 1,
+            (1 - probs) ** self.gamma,
+            probs ** self.gamma
+        )
+
+        # Compute base BCE loss
+        bce_loss = F.binary_cross_entropy_with_logits(
+            logits,
+            labels,
+            reduction='none'
+        )
+
+        # Apply focal weight
+        focal_loss = focal_weight * bce_loss
+
+        # Apply alpha balancing (higher weight for positive pairs)
+        alpha_weight = torch.where(
+            labels == 1,
+            torch.ones_like(labels) * self.alpha,
+            torch.ones_like(labels) * (1 - self.alpha)
+        )
+        focal_loss = alpha_weight * focal_loss
+
+        # Mask padding
+        if attention_mask is not None:
+            mask_2d = attention_mask.unsqueeze(-1) * attention_mask.unsqueeze(-2)
+            focal_loss = focal_loss * mask_2d.float()
+            loss = focal_loss.sum() / (mask_2d.sum() + 1e-8)
+        else:
+            loss = focal_loss.mean()
+
+        return loss
 
 
 def compute_metrics(

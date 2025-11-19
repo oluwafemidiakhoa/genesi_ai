@@ -1,0 +1,62 @@
+# T4 GPU Optimized Training Configuration for Genesis RNA
+# T4 GPU: 16GB VRAM, good for mixed precision training
+
+model:
+  vocab_size: 9
+  d_model: 256
+  n_heads: 4
+  n_layers: 4
+  dim_ff: 1024
+  max_len: 512
+  dropout: 0.1
+  attention_dropout: 0.1
+  structure_num_labels: 5
+  use_rotary_embeddings: false
+  attention_type: "standard"
+
+training:
+  # Optimized batch size for T4 (16GB VRAM)
+  batch_size: 32  # Increased from 16 for better GPU utilization
+  learning_rate: 0.0002  # Slightly higher for larger effective batch
+  num_epochs: 10
+  warmup_steps: 500  # Reduced for smaller datasets
+  weight_decay: 0.01
+  gradient_clip_norm: 1.0
+
+  # Learning rate scheduling
+  lr_scheduler_type: "cosine"  # Smooth decay
+  min_lr_ratio: 0.05  # Decay to 5% of peak LR
+
+  # MLM settings
+  mlm_probability: 0.15
+
+  # Multi-task loss weights (optimized for pair prediction)
+  mlm_loss_weight: 1.0
+  structure_loss_weight: 0.8
+  pair_loss_weight: 1.5  # High priority on pair prediction
+
+  # Focal loss for severe class imbalance
+  use_focal_loss_for_pairs: true
+  focal_alpha: 0.75  # Prioritize positive pairs
+  focal_gamma: 2.0  # Focus on hard examples
+
+  # Checkpointing
+  save_steps: 1000
+  eval_steps: 200
+  logging_steps: 50
+  output_dir: "./checkpoints"
+
+  # T4-optimized settings
+  device: "cuda"
+  mixed_precision: true
+  fp16: true  # Essential for T4 performance
+  num_workers: 2  # Good balance for I/O
+  prefetch_factor: 2
+
+  # AST settings
+  use_ast: true
+  ast_target_activation: 0.4  # Train on 40% of samples
+  ast_controller_kp: 0.01
+  ast_controller_ki: 0.001
+
+  seed: 42
