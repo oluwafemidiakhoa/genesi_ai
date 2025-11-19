@@ -388,7 +388,8 @@ class BinaryFocalLoss(nn.Module):
 
 def compute_metrics(
     outputs: Dict[str, torch.Tensor],
-    batch: Dict[str, torch.Tensor]
+    batch: Dict[str, torch.Tensor],
+    pair_threshold: float = 0.5
 ) -> Dict[str, float]:
     """
     Compute evaluation metrics for all tasks.
@@ -396,6 +397,7 @@ def compute_metrics(
     Args:
         outputs: Model outputs
         batch: Ground truth batch
+        pair_threshold: Threshold for pair prediction (optimal: 0.3-0.4 for imbalanced data)
 
     Returns:
         Dictionary of metrics
@@ -420,8 +422,8 @@ def compute_metrics(
         struct_total = struct_mask.sum()
         metrics["structure_accuracy"] = (struct_correct / struct_total).item()
 
-    # Pair prediction metrics (precision, recall, F1)
-    pair_preds = (torch.sigmoid(outputs["pair_logits"]) > 0.5).float()
+    # Pair prediction metrics (precision, recall, F1) with configurable threshold
+    pair_preds = (torch.sigmoid(outputs["pair_logits"]) > pair_threshold).float()
     pair_labels = batch["pair_matrix"]
 
     if "attention_mask" in batch:

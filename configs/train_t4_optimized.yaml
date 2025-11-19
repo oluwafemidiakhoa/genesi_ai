@@ -18,7 +18,7 @@ training:
   # Optimized batch size for T4 (16GB VRAM)
   batch_size: 32  # Increased from 16 for better GPU utilization
   learning_rate: 0.0002  # Slightly higher for larger effective batch
-  num_epochs: 10
+  num_epochs: 30  # Extended training (AST makes this efficient!)
   warmup_steps: 500  # Reduced for smaller datasets
   weight_decay: 0.01
   gradient_clip_norm: 1.0
@@ -30,15 +30,18 @@ training:
   # MLM settings
   mlm_probability: 0.15
 
-  # Multi-task loss weights (optimized for pair prediction)
+  # Multi-task loss weights (AGGRESSIVE optimization)
   mlm_loss_weight: 1.0
   structure_loss_weight: 0.8
-  pair_loss_weight: 1.5  # High priority on pair prediction
+  pair_loss_weight: 3.0  # MAXIMIZED for best structure prediction
 
   # Focal loss for severe class imbalance
   use_focal_loss_for_pairs: true
   focal_alpha: 0.75  # Prioritize positive pairs
   focal_gamma: 2.0  # Focus on hard examples
+
+  # Optimal threshold for imbalanced pair prediction
+  pair_prediction_threshold: 0.35  # Lower threshold captures more true pairs
 
   # Checkpointing
   save_steps: 1000

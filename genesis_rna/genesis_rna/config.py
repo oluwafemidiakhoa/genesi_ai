@@ -130,12 +130,15 @@ class TrainingConfig:
     # Multi-task loss weights
     mlm_loss_weight: float = 1.0
     structure_loss_weight: float = 0.8  # Increased from 0.5
-    pair_loss_weight: float = 1.5  # Increased from 0.1 to prioritize pair prediction
+    pair_loss_weight: float = 3.0  # AGGRESSIVE: Maximally prioritize pair prediction with AST
 
     # Focal loss settings for pair prediction (handles class imbalance)
     use_focal_loss_for_pairs: bool = True
     focal_alpha: float = 0.75  # Weight for positive pairs
     focal_gamma: float = 2.0  # Focusing parameter
+
+    # Pair prediction threshold (optimal for imbalanced data with focal loss)
+    pair_prediction_threshold: float = 0.35  # Lower than 0.5 to capture more true pairs
 
     # Checkpointing and logging
     save_steps: int = 5000
