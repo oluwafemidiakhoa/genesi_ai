@@ -313,16 +313,24 @@ class GenesisRNAModel(nn.Module):
         return self.encoder(input_ids)
 
     def save_pretrained(self, save_path: str):
-        """Save model weights"""
+        """Save model weights and config"""
+        # Save config as dict for better serialization
+        config_dict = self.cfg.to_dict() if hasattr(self.cfg, 'to_dict') else self.cfg
         torch.save({
             'model_state_dict': self.state_dict(),
-            'config': self.cfg,
+            'config': config_dict,
         }, save_path)
 
     @classmethod
     def from_pretrained(cls, load_path: str, device: str = 'cpu'):
         """Load model from checkpoint"""
         checkpoint = torch.load(load_path, map_location=device)
-        model = cls(checkpoint['config'])
+
+        # Handle config - convert dict to GenesisRNAConfig if needed
+        config = checkpoint['config']
+        if isinstance(config, dict):
+            config = GenesisRNAConfig.from_dict(config)
+
+        model = cls(config)
         model.load_state_dict(checkpoint['model_state_dict'])
-        return model
+        return model.to(device)
