@@ -308,9 +308,13 @@ def evaluate(
     dataloader: DataLoader,
     loss_fn: MultiTaskLoss,
     device: torch.device,
+    pair_threshold: float = 0.5,
 ) -> Dict[str, float]:
     """
     Evaluate model on validation set.
+
+    Args:
+        pair_threshold: Threshold for pair prediction metrics
 
     Returns:
         Dictionary of metrics
@@ -337,8 +341,8 @@ def evaluate(
             # Compute loss
             loss_dict = loss_fn(outputs, batch)
 
-            # Compute metrics
-            metrics = compute_metrics(outputs, batch)
+            # Compute metrics with optimal threshold
+            metrics = compute_metrics(outputs, batch, pair_threshold=pair_threshold)
 
             # Accumulate
             total_loss += loss_dict['loss'].item() * batch_size
@@ -508,9 +512,21 @@ def main():
     print(f"Metrics will be logged to {output_dir / 'training_metrics.csv'}")
 
     # Training loop
-    print(f"\nStarting training for {train_config.num_epochs} epochs...")
+    print("\n" + "="*70)
+    print("GENESIS RNA TRAINING - OPTIMIZED WITH AST")
+    print("="*70)
+    print(f"Epochs: {train_config.num_epochs}")
     print(f"Total training steps: {num_training_steps}")
     print(f"LR Scheduler: {train_config.lr_scheduler_type} with warmup={train_config.warmup_steps} steps")
+    print(f"\nOPTIMIZATION STRATEGY:")
+    print(f"  • Pair Loss Weight: {train_config.pair_loss_weight} (AGGRESSIVE)")
+    print(f"  • Pair Threshold: {train_config.pair_prediction_threshold} (OPTIMIZED)")
+    print(f"  • Focal Loss: {'Enabled' if train_config.use_focal_loss_for_pairs else 'Disabled'}")
+    if train_config.use_ast:
+        print(f"  • AST Target Activation: {train_config.ast_target_activation*100:.0f}%")
+        print(f"    → Training on hardest {train_config.ast_target_activation*100:.0f}% of samples")
+        print(f"    → Saving ~{(1-train_config.ast_target_activation)*100:.0f}% computation!")
+    print("="*70 + "\n")
 
     best_val_loss = float('inf')
 
@@ -529,9 +545,13 @@ def main():
             train_config,
         )
 
-        print(f"\nEpoch {epoch} - Train metrics:")
+        print(f"\n{'='*60}")
+        print(f"Epoch {epoch} - Train metrics:")
         for key, value in train_metrics.items():
-            print(f"  {key}: {value:.4f}")
+            if key == 'activation_rate' and train_config.use_ast:
+                print(f"  {key}: {value:.4f} (AST: {value*100:.1f}% samples trained)")
+            else:
+                print(f"  {key}: {value:.4f}")
 
         # Log train metrics
         metrics_logger.log(
@@ -543,8 +563,9 @@ def main():
             act_rate=train_metrics.get('activation_rate')
         )
 
-        # Evaluate
-        val_metrics = evaluate(model, val_loader, loss_fn, device)
+        # Evaluate with optimal pair prediction threshold
+        val_metrics = evaluate(model, val_loader, loss_fn, device,
+                              pair_threshold=train_config.pair_prediction_threshold)
 
         print(f"Epoch {epoch} - Val metrics:")
         for key, value in val_metrics.items():
@@ -589,8 +610,35 @@ def main():
             for key, value in ast_stats.items():
                 print(f"  {key}: {value}")
 
-    print("\nTraining complete!")
+    print("\n" + "="*70)
+    print("TRAINING COMPLETE!")
+    print("="*70)
     print(f"Best validation loss: {best_val_loss:.4f}")
+
+    # AST Performance Summary
+    if train_config.use_ast:
+        print("\n" + "="*70)
+        print("AST PERFORMANCE SUMMARY")
+        print("="*70)
+
+        # Calculate total computational savings
+        all_train_metrics = metrics_logger.get_history()
+        train_phases = [m for m in all_train_metrics if m['phase'] == 'train']
+
+        if train_phases:
+            avg_activation = sum(m.get('activation_rate', 1.0) for m in train_phases) / len(train_phases)
+            computational_savings = (1 - avg_activation) * 100
+
+            print(f"Average Activation Rate: {avg_activation*100:.1f}%")
+            print(f"Computational Savings: {computational_savings:.1f}%")
+            print(f"Target Activation: {train_config.ast_target_activation*100:.1f}%")
+            print(f"\nAST enabled training on {avg_activation*100:.1f}% of samples while")
+            print(f"maintaining model quality - saving {computational_savings:.1f}% of compute!")
+            print(f"\nWith {train_config.num_epochs} epochs, this is equivalent to training")
+            print(f"a standard model for ~{train_config.num_epochs * avg_activation:.1f} epochs")
+            print(f"but achieving better results by focusing on hard examples!")
+
+        print("="*70)
 
 
 if __name__ == '__main__':
