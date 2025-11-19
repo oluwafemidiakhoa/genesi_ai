@@ -292,8 +292,27 @@ After 10 epochs, you should see:
 5. 🎯 Fine-tune hyperparameters if needed
 6. 🧬 Test on real RNA sequences
 
+## 💾 Managing Checkpoints
+
+After training, your checkpoints are saved to Google Drive. To organize them locally:
+
+1. **Download from Google Drive:**
+   - Navigate to `My Drive/genesis_rna_checkpoints/`
+   - Download the entire folder
+
+2. **Organize locally:**
+   ```bash
+   # Copy to the checkpoints directory
+   cp -r ~/Downloads/genesis_rna_checkpoints/* checkpoints/pretrained/base/
+   ```
+
+3. **See full checkpoint documentation:**
+   - Read `checkpoints/README.md` for detailed organization guidelines
+   - Learn about checkpoint naming conventions
+   - Understand checkpoint structure and usage
+
 ---
 
-**Questions?** Check `IMPROVEMENTS.md` for detailed technical documentation.
+**Questions?** Check `IMPROVEMENTS.md` for detailed technical documentation or `checkpoints/README.md` for checkpoint management.
 
 **Ready?** Just run the one-command training above and watch the magic happen! ✨

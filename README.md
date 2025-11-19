@@ -25,6 +25,11 @@ pip install -r requirements.txt
 python -m genesis_rna.train_pretrain --use_dummy_data --model_size small
 ```
 
+**Checkpoint Management:**
+- Trained models are saved to `checkpoints/` directory
+- See [Checkpoint Organization Guide](checkpoints/README.md) for details
+- Google Colab checkpoints saved to Google Drive by default
+
 ---
 
 ## License
