@@ -329,6 +329,9 @@ class GenesisRNAModel(nn.Module):
         # Handle config - convert dict to GenesisRNAConfig if needed
         config = checkpoint['config']
         if isinstance(config, dict):
+            # If config has 'model' key, extract it (nested structure from training)
+            if 'model' in config:
+                config = config['model']
             config = GenesisRNAConfig.from_dict(config)
 
         model = cls(config)
