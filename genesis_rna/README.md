@@ -28,6 +28,28 @@ Genesis RNA is a transformer-based foundation model for RNA sequences that combi
 
 ---
 
+## 🚀 Quick Start with Google Colab (No Setup Required!)
+
+Train Genesis RNA in your browser with free GPU access:
+
+### Option 1: Quick Test (5 minutes)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/oluwafemidiakhoa/genesi_ai/blob/main/genesis_rna/genesis_rna_quick_start.ipynb)
+
+Train a small model with dummy data - perfect for testing!
+
+### Option 2: Full Training (with real data)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/oluwafemidiakhoa/genesi_ai/blob/main/genesis_rna/genesis_rna_colab_training.ipynb)
+
+Complete training pipeline with:
+- Real RNA datasets (Human ncRNAs, RNAcentral)
+- Training visualization
+- Model evaluation
+- Checkpoint management in Google Drive
+
+**Just click the badge above and follow the instructions!**
+
+---
+
 ## Installation
 
 ### Prerequisites
