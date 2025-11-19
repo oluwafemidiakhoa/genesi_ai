@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast, GradScaler
 from tqdm import tqdm
 
 from .config import GenesisRNAConfig, TrainingConfig
@@ -84,7 +84,7 @@ def setup_training(
         print(f"AST enabled with target activation: {train_config.ast_target_activation}")
 
     # Create gradient scaler for mixed precision
-    scaler = GradScaler() if train_config.fp16 else None
+    scaler = GradScaler('cuda') if train_config.fp16 else None
 
     return model, optimizer, loss_fn, ast_selector, scaler, device
 
@@ -145,7 +145,7 @@ def train_epoch(
         batch_size = batch['input_ids'].size(0)
 
         # Forward pass (compute outputs for all samples first)
-        with autocast(enabled=scaler is not None):
+        with autocast('cuda', enabled=scaler is not None):
             outputs = model(
                 batch['input_ids'],
                 attention_mask=batch['attention_mask']
@@ -188,7 +188,7 @@ def train_epoch(
             total_selected += batch_size
 
         # Compute loss
-        with autocast(enabled=scaler is not None):
+        with autocast('cuda', enabled=scaler is not None):
             loss_dict = loss_fn(outputs_selected, batch_selected)
             loss = loss_dict['loss']
 

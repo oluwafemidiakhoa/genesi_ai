@@ -125,8 +125,8 @@ class TrainingConfig:
 
     # Multi-task loss weights
     mlm_loss_weight: float = 1.0
-    structure_loss_weight: float = 0.5
-    pair_loss_weight: float = 0.1
+    structure_loss_weight: float = 0.8  # Increased from 0.5
+    pair_loss_weight: float = 1.5  # Increased from 0.1 to prioritize pair prediction
 
     # Checkpointing and logging
     save_steps: int = 5000
@@ -140,7 +140,7 @@ class TrainingConfig:
     fp16: bool = True
 
     # Data loading
-    num_workers: int = 4
+    num_workers: int = 2  # Reduced from 4 to avoid DataLoader warnings
     prefetch_factor: int = 2
 
     # AST settings
