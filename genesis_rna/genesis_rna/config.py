@@ -120,13 +120,22 @@ class TrainingConfig:
     weight_decay: float = 0.01
     gradient_clip_norm: float = 1.0
 
+    # Learning rate scheduling
+    lr_scheduler_type: str = "cosine"  # 'linear', 'cosine', 'constant'
+    min_lr_ratio: float = 0.1  # Minimum LR as ratio of peak LR
+
     # MLM settings
     mlm_probability: float = 0.15
 
     # Multi-task loss weights
     mlm_loss_weight: float = 1.0
-    structure_loss_weight: float = 0.5
-    pair_loss_weight: float = 0.1
+    structure_loss_weight: float = 0.8  # Increased from 0.5
+    pair_loss_weight: float = 1.5  # Increased from 0.1 to prioritize pair prediction
+
+    # Focal loss settings for pair prediction (handles class imbalance)
+    use_focal_loss_for_pairs: bool = True
+    focal_alpha: float = 0.75  # Weight for positive pairs
+    focal_gamma: float = 2.0  # Focusing parameter
 
     # Checkpointing and logging
     save_steps: int = 5000
@@ -140,7 +149,7 @@ class TrainingConfig:
     fp16: bool = True
 
     # Data loading
-    num_workers: int = 4
+    num_workers: int = 2  # Reduced from 4 to avoid DataLoader warnings
     prefetch_factor: int = 2
 
     # AST settings
