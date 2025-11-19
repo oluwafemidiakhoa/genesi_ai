@@ -25,8 +25,8 @@ from torch.optim import AdamW
 from torch.cuda.amp import autocast, GradScaler
 from tqdm import tqdm
 
-from .config import GenesisRNAConfig, TrainingConfig, SPECIAL_TOKENS, NUC_VOCAB
-from .tokenization import RNATokenizer, RNATokenizerConfig
+from .config import GenesisRNAConfig, TrainingConfig
+from .tokenization import RNATokenizer, RNATokenizerConfig, SPECIAL_TOKENS, NUC_VOCAB
 from .data import (
     RNAPretrainDataset,
     collate_pretrain_batch,
