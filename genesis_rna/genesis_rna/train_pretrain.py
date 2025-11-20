@@ -31,6 +31,7 @@ from .data import (
     RNAPretrainDataset,
     collate_pretrain_batch,
     create_dummy_dataset,
+    load_pickle_data,
 )
 from .model import GenesisRNAModel
 from .losses import MultiTaskLoss, compute_metrics
@@ -394,6 +395,7 @@ def main():
     parser.add_argument('--learning_rate', type=float, default=1e-4)
     parser.add_argument('--use_ast', action='store_true', default=True, help='Enable AST')
     parser.add_argument('--ast_target_activation', type=float, default=0.4)
+    parser.add_argument('--max_samples', type=int, default=None, help='Maximum number of samples to load from data (None = all)')
 
     args = parser.parse_args()
 
@@ -456,8 +458,13 @@ def main():
             with_structure=True,
         )
     else:
-        # TODO: Load real data
-        raise NotImplementedError("Real data loading not yet implemented")
+        # Load real data from pickle file
+        print(f"\nLoading real data from: {args.data_path}")
+        train_samples, val_samples = load_pickle_data(
+            args.data_path,
+            max_samples=args.max_samples if hasattr(args, 'max_samples') else None,
+            train_split=0.9,
+        )
 
     # Create datasets
     train_dataset = RNAPretrainDataset(
