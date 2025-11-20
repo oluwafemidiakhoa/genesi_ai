@@ -2,6 +2,16 @@
 
 This directory contains Jupyter notebooks and scripts for using Genesis RNA for various RNA analysis tasks.
 
+## 🚨 Getting Errors? Read This First!
+
+**If you get `NameError: name 'analyzer' is not defined` or similar errors:**
+
+👉 **See [NOTEBOOK_TROUBLESHOOTING.md](../NOTEBOOK_TROUBLESHOOTING.md)** for comprehensive solutions!
+
+**Quick Fix:** Run all cells in order from top to bottom, or click **Runtime → Run all**
+
+---
+
 ## 📋 Contents
 
 ### BRCA1 Variant Analysis
