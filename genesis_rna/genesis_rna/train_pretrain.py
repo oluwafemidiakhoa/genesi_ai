@@ -460,11 +460,39 @@ def main():
     else:
         # Load real data from pickle file
         print(f"\nLoading real data from: {args.data_path}")
-        train_samples, val_samples = load_pickle_data(
-            args.data_path,
-            max_samples=args.max_samples if hasattr(args, 'max_samples') else None,
-            train_split=0.9,
-        )
+
+        # Check if data path exists
+        from pathlib import Path
+        data_path = Path(args.data_path)
+        if not data_path.exists():
+            print(f"\n⚠️  ERROR: Data path not found: {args.data_path}")
+            print("\n📋 To generate sample data, run:")
+            print(f"    cd genesis_rna/scripts")
+            print(f"    python generate_sample_ncrna.py --output {args.data_path} --num_samples 5000")
+            print("\n💡 Or use dummy data for quick testing:")
+            print(f"    python -m genesis_rna.train_pretrain --use_dummy_data")
+            print("\n🔄 Falling back to dummy data for this run...\n")
+
+            # Fall back to dummy data
+            train_samples = create_dummy_dataset(
+                num_samples=1000,
+                min_len=50,
+                max_len=200,
+                with_structure=True,
+            )
+            val_samples = create_dummy_dataset(
+                num_samples=100,
+                min_len=50,
+                max_len=200,
+                with_structure=True,
+            )
+        else:
+            # Path exists, proceed with loading
+            train_samples, val_samples = load_pickle_data(
+                args.data_path,
+                max_samples=args.max_samples if hasattr(args, 'max_samples') else None,
+                train_split=0.9,
+            )
 
     # Create datasets
     train_dataset = RNAPretrainDataset(
