@@ -32,6 +32,36 @@ python -m genesis_rna.train_pretrain --use_dummy_data --model_size small
 
 ---
 
+## 🎗️ Breast Cancer Cure Research
+
+Genesis RNA is being applied to accelerate breast cancer cure research through:
+
+- **BRCA1/2 Mutation Analysis**: Predict pathogenicity of genetic variants
+- **mRNA Therapeutics**: Design optimized cancer treatments
+- **Neoantigen Discovery**: Create personalized cancer vaccines
+- **Drug Target Identification**: Find new therapeutic opportunities
+
+**[📖 Breast Cancer Research Guide](BREAST_CANCER_RESEARCH.md)**
+
+**[🚀 Quick Start for Cancer Research](BREAST_CANCER_QUICKSTART.md)**
+
+**Key Capabilities:**
+```python
+from genesis_rna.breast_cancer import BreastCancerAnalyzer
+
+# Predict variant pathogenicity
+analyzer = BreastCancerAnalyzer('model.pt')
+prediction = analyzer.predict_variant_effect(
+    gene='BRCA1',
+    wild_type_rna=wt_sequence,
+    mutant_rna=mut_sequence
+)
+print(f"Pathogenicity: {prediction.pathogenicity_score:.3f}")
+print(f"Interpretation: {prediction.interpretation}")
+```
+
+---
+
 ## License
 
 MIT
