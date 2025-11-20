@@ -291,3 +291,57 @@ def load_rfam_data(file_path: str, max_samples: Optional[int] = None) -> List[RN
         List of RNAPretrainSample objects
     """
     raise NotImplementedError("Rfam data loading not yet implemented")
+
+
+def load_pickle_data(file_path: str, max_samples: Optional[int] = None, train_split: float = 0.9) -> Tuple[List[RNAPretrainSample], List[RNAPretrainSample]]:
+    """
+    Load RNA sequences from pickle format (output of preprocess_rna.py).
+
+    Args:
+        file_path: Path to pickle file containing processed sequences
+        max_samples: Maximum number of samples to load (None = all)
+        train_split: Fraction of data to use for training (default: 0.9)
+
+    Returns:
+        Tuple of (train_samples, val_samples) lists of RNAPretrainSample objects
+    """
+    import pickle
+    from pathlib import Path
+
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"Data file not found: {file_path}")
+
+    print(f"Loading data from {file_path}...")
+    with open(file_path, 'rb') as f:
+        data = pickle.load(f)
+
+    sequences = data['sequences']
+    metadata = data.get('metadata', [{}] * len(sequences))
+
+    print(f"Loaded {len(sequences):,} sequences")
+
+    # Limit samples if requested
+    if max_samples is not None and max_samples < len(sequences):
+        sequences = sequences[:max_samples]
+        metadata = metadata[:max_samples]
+        print(f"Using first {max_samples:,} sequences")
+
+    # Convert to RNAPretrainSample objects
+    samples = []
+    for seq, meta in zip(sequences, metadata):
+        samples.append(RNAPretrainSample(
+            seq=seq,
+            struct_labels=None,  # No structure labels in basic preprocessing
+            pair_indices=None,    # No pair indices in basic preprocessing
+            metadata=meta,
+        ))
+
+    # Split into train and validation
+    split_idx = int(len(samples) * train_split)
+    train_samples = samples[:split_idx]
+    val_samples = samples[split_idx:]
+
+    print(f"Split into {len(train_samples):,} train and {len(val_samples):,} validation samples")
+
+    return train_samples, val_samples
