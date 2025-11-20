@@ -16,6 +16,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .model import GenesisRNAModel
+from .config import GenesisRNAConfig
 from .tokenization import RNATokenizer
 from .heads import MutationEffectHead
 
@@ -82,8 +83,9 @@ class BreastCancerAnalyzer:
 
         # Load model
         checkpoint = torch.load(model_path, map_location=device)
-        self.config = checkpoint['config']['model']
-        self.model = GenesisRNAModel(**self.config)
+        config_dict = checkpoint['config']['model']
+        self.config = GenesisRNAConfig.from_dict(config_dict) if isinstance(config_dict, dict) else config_dict
+        self.model = GenesisRNAModel(self.config)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model.to(device)
         self.model.eval()
@@ -123,8 +125,8 @@ class BreastCancerAnalyzer:
         """
         with torch.no_grad():
             # Encode sequences
-            wt_encoded = self.tokenizer.encode(wild_type_rna, max_len=self.config['max_len'])
-            mut_encoded = self.tokenizer.encode(mutant_rna, max_len=self.config['max_len'])
+            wt_encoded = self.tokenizer.encode(wild_type_rna, max_len=self.config.max_len)
+            mut_encoded = self.tokenizer.encode(mutant_rna, max_len=self.config.max_len)
 
             wt_ids = torch.tensor(wt_encoded['input_ids']).unsqueeze(0).to(self.device)
             mut_ids = torch.tensor(mut_encoded['input_ids']).unsqueeze(0).to(self.device)
@@ -138,13 +140,13 @@ class BreastCancerAnalyzer:
             mut_logits = mut_output['mlm_logits']
 
             wt_perplexity = torch.exp(F.cross_entropy(
-                wt_logits.view(-1, self.config['vocab_size']),
+                wt_logits.view(-1, self.config.vocab_size),
                 wt_ids.view(-1),
                 reduction='mean'
             )).item()
 
             mut_perplexity = torch.exp(F.cross_entropy(
-                mut_logits.view(-1, self.config['vocab_size']),
+                mut_logits.view(-1, self.config.vocab_size),
                 mut_ids.view(-1),
                 reduction='mean'
             )).item()
@@ -218,7 +220,7 @@ class BreastCancerAnalyzer:
         # In practice, would compare against reference sequence
 
         with torch.no_grad():
-            encoded = self.tokenizer.encode(variant_rna, max_len=self.config['max_len'])
+            encoded = self.tokenizer.encode(variant_rna, max_len=self.config.max_len)
             input_ids = torch.tensor(encoded['input_ids']).unsqueeze(0).to(self.device)
 
             output = self.model(input_ids)
@@ -450,6 +452,7 @@ class NeoantigenDiscovery:
         self.model = model
         self.device = device
         self.tokenizer = RNATokenizer()
+        self.config = model.cfg  # Access model's config
 
     def find_neoantigens(
         self,
@@ -495,7 +498,7 @@ class NeoantigenDiscovery:
     def _predict_immunogenicity(self, sequence: str) -> float:
         """Predict if RNA sequence will generate immunogenic peptide"""
         with torch.no_grad():
-            encoded = self.tokenizer.encode(sequence, max_len=self.config['max_len'])
+            encoded = self.tokenizer.encode(sequence, max_len=self.config.max_len)
             input_ids = torch.tensor(encoded['input_ids']).unsqueeze(0).to(self.device)
 
             output = self.model(input_ids)
