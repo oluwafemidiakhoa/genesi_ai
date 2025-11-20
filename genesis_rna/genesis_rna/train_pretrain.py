@@ -462,7 +462,6 @@ def main():
         print(f"\nLoading real data from: {args.data_path}")
 
         # Check if data path exists
-        from pathlib import Path
         data_path = Path(args.data_path)
         if not data_path.exists():
             print(f"\n⚠️  ERROR: Data path not found: {args.data_path}")
