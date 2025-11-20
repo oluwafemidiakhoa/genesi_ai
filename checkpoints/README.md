@@ -108,18 +108,41 @@ Each checkpoint file (`.pt`) contains:
 
 ## Loading Checkpoints
 
-### Load for Inference
+### Load for Inference (Recommended)
+
+**Use the built-in `from_pretrained()` method:**
+
+```python
+from genesis_rna import GenesisRNAModel, RNATokenizer
+
+# Load model (handles config conversion automatically)
+model = GenesisRNAModel.from_pretrained(
+    'checkpoints/pretrained/base/best_model.pt',
+    device='cuda'  # or 'cpu'
+)
+
+# Use for predictions
+tokenizer = RNATokenizer()
+sequence = "ACGUACGUACGU"
+inputs = tokenizer.encode(sequence)
+outputs = model(inputs['input_ids'])
+```
+
+### Load for Inference (Manual)
+
+**If you need manual control over the loading process:**
 
 ```python
 import torch
-from genesis_rna import GenesisRNAModel, RNATokenizer
+from genesis_rna import GenesisRNAModel, GenesisRNAConfig, RNATokenizer
 
 # Load checkpoint
 checkpoint = torch.load('checkpoints/pretrained/base/best_model.pt')
 
 # Create model with saved config
-model_config = checkpoint['config']['model']
-model = GenesisRNAModel(**model_config)
+model_config_dict = checkpoint['config']['model']
+model_config = GenesisRNAConfig.from_dict(model_config_dict)
+model = GenesisRNAModel(model_config)
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 
@@ -134,14 +157,15 @@ outputs = model(inputs['input_ids'])
 
 ```python
 import torch
-from genesis_rna import GenesisRNAModel
+from genesis_rna import GenesisRNAModel, GenesisRNAConfig
 from torch.optim import AdamW
 
 # Load checkpoint
 checkpoint = torch.load('checkpoints/pretrained/base/checkpoint_epoch_5.pt')
 
 # Restore model
-model = GenesisRNAModel(**checkpoint['config']['model'])
+model_config = GenesisRNAConfig.from_dict(checkpoint['config']['model'])
+model = GenesisRNAModel(model_config)
 model.load_state_dict(checkpoint['model_state_dict'])
 
 # Restore optimizer
