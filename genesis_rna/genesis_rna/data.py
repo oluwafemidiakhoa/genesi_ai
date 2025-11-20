@@ -298,7 +298,7 @@ def load_pickle_data(file_path: str, max_samples: Optional[int] = None, train_sp
     Load RNA sequences from pickle format (output of preprocess_rna.py).
 
     Args:
-        file_path: Path to pickle file containing processed sequences
+        file_path: Path to pickle file or directory containing pickle files
         max_samples: Maximum number of samples to load (None = all)
         train_split: Fraction of data to use for training (default: 0.9)
 
@@ -310,9 +310,20 @@ def load_pickle_data(file_path: str, max_samples: Optional[int] = None, train_sp
 
     file_path = Path(file_path)
     if not file_path.exists():
-        raise FileNotFoundError(f"Data file not found: {file_path}")
+        raise FileNotFoundError(f"Data path not found: {file_path}")
 
-    print(f"Loading data from {file_path}...")
+    # If file_path is a directory, find pickle files in it
+    if file_path.is_dir():
+        pickle_files = sorted(file_path.glob("*.pkl")) + sorted(file_path.glob("*.pickle"))
+        if not pickle_files:
+            raise FileNotFoundError(f"No pickle files found in directory: {file_path}")
+        print(f"Found {len(pickle_files)} pickle file(s) in {file_path}")
+        # Use the first pickle file found
+        file_path = pickle_files[0]
+        print(f"Loading data from {file_path}...")
+    else:
+        print(f"Loading data from {file_path}...")
+
     with open(file_path, 'rb') as f:
         data = pickle.load(f)
 
