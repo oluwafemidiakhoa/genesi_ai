@@ -11,7 +11,8 @@ datasets>=2.14.0
 biopython>=1.81
 
 # Adaptive Sparse Training
-adaptive-sparse-training
+# Note: AST functionality is implemented in genesis_rna/ast_wrapper.py
+# No external package required
 
 # Data processing
 numpy>=1.24.0
