@@ -10,7 +10,9 @@ venv/
 .idea/
 
 # Large / generated stuff
-data/
+data/*
+!data/README.md
+!data/.gitkeep
 models/
 temp_pockets/
 test_data/
