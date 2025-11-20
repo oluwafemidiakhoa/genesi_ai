@@ -129,8 +129,8 @@ class TrainingConfig:
 
     # Multi-task loss weights
     mlm_loss_weight: float = 1.0
-    structure_loss_weight: float = 0.8  # Increased from 0.5
-    pair_loss_weight: float = 3.0  # AGGRESSIVE: Maximally prioritize pair prediction with AST
+    structure_loss_weight: float = 0.0  # Set to 0 - no structure annotations in ncRNA data
+    pair_loss_weight: float = 0.0  # Set to 0 - no pair annotations in ncRNA data
 
     # Focal loss settings for pair prediction (handles class imbalance)
     use_focal_loss_for_pairs: bool = True

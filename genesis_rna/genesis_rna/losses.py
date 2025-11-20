@@ -61,8 +61,14 @@ def structure_loss(
                 -100 for positions to ignore
 
     Returns:
-        Scalar loss tensor
+        Scalar loss tensor (returns 0.0 if all labels are ignored)
     """
+    # Check if we have any valid labels
+    valid_mask = (labels != -100)
+    if valid_mask.sum() == 0:
+        # No valid labels - return zero loss
+        return torch.tensor(0.0, device=logits.device, dtype=logits.dtype)
+
     loss = F.cross_entropy(
         logits.view(-1, logits.size(-1)),
         labels.view(-1),
@@ -90,8 +96,13 @@ def pair_loss(
                        to ignore padding positions
 
     Returns:
-        Scalar loss tensor
+        Scalar loss tensor (returns 0.0 if no pairs in ground truth)
     """
+    # Check if we have any positive pairs
+    if pair_matrix.sum() == 0:
+        # No pairs to learn from - return zero loss
+        return torch.tensor(0.0, device=pair_logits.device, dtype=pair_logits.dtype)
+
     # Binary cross-entropy with logits
     loss = F.binary_cross_entropy_with_logits(
         pair_logits,
@@ -343,8 +354,13 @@ class BinaryFocalLoss(nn.Module):
             attention_mask: Optional mask [batch_size, seq_len]
 
         Returns:
-            Scalar loss
+            Scalar loss (returns 0.0 if no pairs in ground truth)
         """
+        # Check if we have any positive pairs
+        if labels.sum() == 0:
+            # No pairs to learn from - return zero loss
+            return torch.tensor(0.0, device=logits.device, dtype=logits.dtype)
+
         # Get probabilities
         probs = torch.sigmoid(logits)
 
