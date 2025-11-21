@@ -443,11 +443,26 @@ class NeoantigenDiscovery:
     4. Design mRNA vaccine encoding top neoantigens
     """
 
-    def __init__(self, model: GenesisRNAModel, device: str = 'cuda'):
-        self.model = model
+    def __init__(self, model_path: str, device: str = 'cuda' if torch.cuda.is_available() else 'cpu'):
+        """
+        Initialize neoantigen discovery with trained Genesis RNA model
+
+        Args:
+            model_path: Path to trained model checkpoint
+            device: Device to run inference on
+        """
         self.device = device
         self.tokenizer = RNATokenizer()
-        self.config = model.cfg  # Access model's config
+
+        # Load model
+        checkpoint = torch.load(model_path, map_location=device)
+        config_dict = checkpoint['config']['model']
+        self.config = GenesisRNAConfig.from_dict(config_dict) if isinstance(config_dict, dict) else config_dict
+
+        self.model = GenesisRNAModel(self.config)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.to(device)
+        self.model.eval()
 
     def find_neoantigens(
         self,
