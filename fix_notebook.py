@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Complete fix for breast_cancer_research_colab.ipynb
-Updates Cell 17 to initialize ALL tools (analyzer, designer, neoantigen_designer)
+Fix the breast_cancer_research_colab.ipynb notebook
+Replaces Cell 17 with proper analyzer initialization
 """
 
 import json
@@ -18,17 +18,13 @@ def fix_notebook():
 
     print(f"Total cells: {len(nb['cells'])}")
 
-    # New Cell 17 code that initializes ALL tools
-    new_cell_17_code = '''# Initialize ALL Cancer Research Tools - COMPLETE VERSION
+    # New Cell 17 code that properly initializes the analyzer
+    new_cell_17_code = '''# Initialize BreastCancerAnalyzer - FIXED VERSION
 import sys
 import torch
 sys.path.insert(0, '/content/genesi_ai/genesis_rna')
 
-from genesis_rna.breast_cancer import (
-    BreastCancerAnalyzer,
-    mRNATherapeuticDesigner,
-    NeoantigenDiscovery
-)
+from genesis_rna.breast_cancer import BreastCancerAnalyzer
 
 # Set device
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -55,17 +51,10 @@ if not os.path.exists(MODEL_PATH):
     print("\\n⚠️  Please complete Step 2 (Training) first!")
     print("Or update MODEL_PATH to point to your trained model")
 else:
-    # Initialize all tools
+    # Initialize analyzer
     analyzer = BreastCancerAnalyzer(MODEL_PATH, device=device)
-    designer = mRNATherapeuticDesigner(MODEL_PATH, device=device)
-    neoantigen_designer = NeoantigenDiscovery(MODEL_PATH, device=device)
 
-    print(f"✅ All tools initialized on {device}!")
-    print(f"\\nAvailable tools:")
-    print(f"  • analyzer - BreastCancerAnalyzer")
-    print(f"  • designer - mRNATherapeuticDesigner")
-    print(f"  • neoantigen_designer - NeoantigenDiscovery")
-
+    print(f"✅ Analyzer initialized on {device}")
     print(f"\\nSupported cancer genes:")
     for gene, desc in analyzer.cancer_genes.items():
         print(f"  • {gene}: {desc}")'''
@@ -80,12 +69,12 @@ else:
             "outputs": [],
             "source": [line + "\n" for line in new_cell_17_code.split("\n")]
         }
-        print("[OK] Cell 17 replaced - now initializes ALL tools")
+        print("[OK] Cell 17 replaced with fixed analyzer initialization")
     else:
         print(f"[ERROR] Notebook has fewer than 18 cells")
         return False
 
-    # Cell 18 should already be deleted, but check
+    # Optionally delete Cell 18 (the duplicate BreastCancerAnalyzer definition)
     if len(nb['cells']) > 18:
         print(f"\\nCell 18 info:")
         cell_18 = nb['cells'][18]
@@ -106,8 +95,8 @@ else:
 
     print(f"\\n[SUCCESS] Notebook fixed successfully!")
     print(f"\\nChanges made:")
-    print(f"  - Cell 17: Now initializes ALL tools (analyzer, designer, neoantigen_designer)")
-    print(f"  - Uses classes from genesis_rna.breast_cancer module")
+    print(f"  - Cell 17: Replaced with proper analyzer initialization")
+    print(f"  - Uses BreastCancerAnalyzer from genesis_rna.breast_cancer module")
     print(f"  - Handles multiple model path locations")
     print(f"  - Provides clear error messages if model not found")
 
@@ -117,7 +106,7 @@ if __name__ == '__main__':
     try:
         success = fix_notebook()
         if success:
-            print(f"\\nThe notebook is now complete with all tools!")
+            print(f"\\nThe notebook should now work in Colab!")
             sys.exit(0)
         else:
             sys.exit(1)

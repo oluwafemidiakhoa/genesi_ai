@@ -35,18 +35,18 @@ sys.path.insert(0, r'c:\Users\adminidiakhoa\genesi_ai\genesis_rna')
 from genesis_rna.breast_cancer import (
     BreastCancerAnalyzer,
     mRNATherapeuticDesigner,
-    NeoantigenDesigner
+    NeoantigenDiscovery
 )
 
 # Reinitialize all tools (using your existing MODEL_PATH and device)
 analyzer = BreastCancerAnalyzer(MODEL_PATH, device=device)
 designer = mRNATherapeuticDesigner(MODEL_PATH, device=device)
-neoantigen_designer = NeoantigenDesigner(MODEL_PATH, device=device)
+neoantigen_designer = NeoantigenDiscovery(MODEL_PATH, device=device)
 
 print("✅ All tools reloaded with fixes!")
 print(f"   • analyzer - BreastCancerAnalyzer")
 print(f"   • designer - mRNATherapeuticDesigner")
-print(f"   • neoantigen_designer - NeoantigenDesigner")
+print(f"   • neoantigen_designer - NeoantigenDiscovery")
 print(f"\n   Device: {device}")
 print(f"   Model: {MODEL_PATH}")
 ```
@@ -88,7 +88,7 @@ analyzer, designer, neoantigen_designer = reload_all_tools(MODEL_PATH, device=de
 **After reload:**
 - ✅ `analyzer.predict_variant_effect()` works correctly
 - ✅ `designer.design_therapeutic()` works correctly
-- ✅ `neoantigen_designer.design_neoantigen_vaccine()` works correctly
+- ✅ `neoantigen_designer.discover_neoantigens()` works correctly
 
 ---
 
@@ -144,7 +144,7 @@ Should output:
 Testing all tools...
 ✓ analyzer: <class 'genesis_rna.breast_cancer.BreastCancerAnalyzer'>
 ✓ designer: <class 'genesis_rna.breast_cancer.mRNATherapeuticDesigner'>
-✓ neoantigen_designer: <class 'genesis_rna.breast_cancer.NeoantigenDesigner'>
+✓ neoantigen_designer: <class 'genesis_rna.breast_cancer.NeoantigenDiscovery'>
 
 ✅ All tools loaded successfully!
 ```

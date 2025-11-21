@@ -40,19 +40,19 @@ def reload_all_tools(model_path, device='cuda'):
     from genesis_rna.breast_cancer import (
         BreastCancerAnalyzer,
         mRNATherapeuticDesigner,
-        NeoantigenDesigner
+        NeoantigenDiscovery
     )
 
     # Initialize all tools
     analyzer = BreastCancerAnalyzer(model_path, device=device)
     designer = mRNATherapeuticDesigner(model_path, device=device)
-    neoantigen_designer = NeoantigenDesigner(model_path, device=device)
+    neoantigen_designer = NeoantigenDiscovery(model_path, device=device)
 
     print(f"✅ All tools reloaded successfully on {device}!")
     print(f"\nAvailable tools:")
     print(f"  • analyzer - BreastCancerAnalyzer")
     print(f"  • designer - mRNATherapeuticDesigner")
-    print(f"  • neoantigen_designer - NeoantigenDesigner")
+    print(f"  • neoantigen_designer - NeoantigenDiscovery")
 
     print(f"\nSupported cancer genes:")
     for gene, desc in analyzer.cancer_genes.items():
