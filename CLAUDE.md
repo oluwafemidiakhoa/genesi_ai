@@ -1,4 +1,10 @@
-# CLAUDE.md - AI Assistant Guide for GENESI AI Repository
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
+
+# AI Assistant Guide for GENESI AI Repository
 
 **Last Updated:** 2025-11-20
 **Repository:** GENESI AI - Genesis RNA Foundation Model for Cancer Research
@@ -154,6 +160,12 @@ genesi_ai/
 - **Google Colab** - Cloud training environment (main development platform)
 - **Google Drive** - Checkpoint storage and sharing
 
+### Platform Notes
+- **Primary environment**: Google Colab (Linux-based)
+- **Local development**: Tested on Windows and Linux
+- **Command examples**: Documentation uses Unix-style paths; Windows users can use forward slashes in Python (e.g., `"data/human_ncrna"` works on both platforms)
+- **Git**: Repository works across platforms, but line endings may differ
+
 ---
 
 ## Development Workflows
@@ -167,6 +179,10 @@ cd genesi_ai
 # Install core dependencies
 cd genesis_rna
 pip install -r requirements.txt
+
+# IMPORTANT: Install genesis_rna package in editable mode
+# This allows imports like: from genesis_rna import GenesisRNAModel
+pip install -e .
 
 # Install cancer research dependencies (optional)
 cd ..
@@ -469,15 +485,18 @@ def test_new_feature():
   - gamma=2.0 (focus on hard examples)
 - `MultiTaskLoss`: Combines MLM + structure + pairing losses
 
-**Important Parameters:**
-- `mlm_loss_weight`: 1.0
-- `structure_loss_weight`: 0.8
-- `pair_loss_weight`: 3.0 (aggressive for better structure prediction)
+**Important Parameters (recently updated - see IMPROVEMENTS.md):**
+- `mlm_loss_weight`: 1.0 (unchanged)
+- `structure_loss_weight`: 0.8 (increased from 0.5)
+- `pair_loss_weight`: 3.0 for T4 config (or 1.5 base) - **significantly increased from 0.1**
+  - This 15-30x increase was critical for fixing pair prediction dropout
 
 **Focal Loss Formula:**
 ```
 FL(p_t) = -α(1-p_t)^γ * BCE(p_t)
 ```
+
+**Note**: The pair_loss_weight increase was a major breakthrough documented in IMPROVEMENTS.md. Previous weight of 0.1 caused pair F1 to drop to 0% by epoch 4.
 
 #### `train_pretrain.py` (679 lines) - Training Script
 **Key Features:**
@@ -1056,11 +1075,12 @@ training:
 - Import errors when running scripts
 
 **Solutions:**
-1. Install in editable mode:
+1. **Install in editable mode (RECOMMENDED):**
 ```bash
 cd genesis_rna
 pip install -e .
 ```
+This is the preferred solution and should be part of initial setup.
 
 2. Or run as module:
 ```bash
@@ -1069,7 +1089,14 @@ python -m genesis_rna.train_pretrain  # Not: python train_pretrain.py
 
 3. Check PYTHONPATH includes repo root:
 ```bash
+# Linux/Mac:
 export PYTHONPATH=/path/to/genesi_ai:$PYTHONPATH
+
+# Windows (Command Prompt):
+set PYTHONPATH=C:\path\to\genesi_ai;%PYTHONPATH%
+
+# Windows (PowerShell):
+$env:PYTHONPATH="C:\path\to\genesi_ai;$env:PYTHONPATH"
 ```
 
 ### Getting Help
@@ -1096,40 +1123,46 @@ export PYTHONPATH=/path/to/genesi_ai:$PYTHONPATH
 
 ### Critical Points
 
-1. **Config Type Handling**
+1. **Package Installation**
+   - **ALWAYS install genesis_rna in editable mode**: `cd genesis_rna && pip install -e .`
+   - This is essential for imports to work correctly
+   - Run this during initial setup and after pulling updates that change package structure
+
+2. **Config Type Handling**
    - Checkpoints may store config as `dict` or `GenesisRNAConfig` object
    - Always use `GenesisRNAConfig.from_dict()` when loading from dict
    - The `from_pretrained()` method handles this automatically
    - This is a common source of bugs - see `CHECKPOINT_FIX_NOTES.md`
 
-2. **Multi-task Learning**
+3. **Multi-task Learning**
    - Model trains on 3 tasks simultaneously: MLM, structure prediction, base-pairing
    - Loss weights are critical: `mlm_loss_weight=1.0, structure_loss_weight=0.8, pair_loss_weight=3.0`
+   - **pair_loss_weight was recently increased 15-30x** - this was critical for fixing pair F1 dropout
    - Focal loss is essential for pair prediction (severe class imbalance)
 
-3. **Adaptive Sparse Training (AST)**
+4. **Adaptive Sparse Training (AST)**
    - AST is a custom implementation (no external package)
    - Located in `ast_wrapper.py`
    - Uses PI controller to dynamically select ~40% of samples
    - Must track activation rate (should hover around target, e.g., 0.4)
 
-4. **Google Colab Environment**
+5. **Google Colab Environment**
    - Primary development/training platform
    - Always mount Google Drive for checkpoint persistence
    - Standard checkpoint path: `/content/drive/MyDrive/genesis_rna_checkpoints/`
    - Free T4 GPU is sufficient for training
 
-5. **T4 GPU Optimization**
+6. **T4 GPU Optimization**
    - FP16 is **essential** for T4 Tensor Cores (not optional)
    - Batch size 32 is optimal for 16GB VRAM
    - Use `configs/train_t4_optimized.yaml`
 
-6. **RNA Tokenization**
+7. **RNA Tokenization**
    - Vocabulary size is 9 (not 4): `[PAD], [MASK], [CLS], [SEP], A, C, G, U, N`
    - BERT-style masking: 80% [MASK], 10% random, 10% keep
    - U (not T) - this is RNA, not DNA
 
-7. **Clinical Focus**
+8. **Clinical Focus**
    - Project is specifically for **breast cancer cure research**
    - BRCA1/2 mutations are primary use case
    - Clinical metrics (sensitivity, specificity, PPV, NPV) are critical
@@ -1330,7 +1363,26 @@ When in doubt, refer to:
 
 ---
 
-**Document Version:** 1.0
+---
+
+## Recent Updates & Changes
+
+**Latest improvements** (see [IMPROVEMENTS.md](IMPROVEMENTS.md) for full details):
+- ✅ **Binary Focal Loss** for pair prediction (fixed F1 dropout issue)
+- ✅ **Cosine Annealing LR Scheduler** for better convergence
+- ✅ **Comprehensive metrics logging** with CSV export and visualization tools
+- ✅ **T4 GPU optimization** with dedicated config file
+- ✅ **Loss weight tuning** - pair_loss_weight increased 15-30x (critical fix)
+
+**Breaking changes**: None recent, but always check IMPROVEMENTS.md before updating
+
+**Deprecation warnings**:
+- Old PyTorch AMP API (`torch.cuda.amp`) replaced with `torch.amp`
+- Some legacy checkpoint formats may need conversion (use `from_pretrained()`)
+
+---
+
+**Document Version:** 1.1
 **Last Updated:** 2025-11-20
 **Maintained By:** Project maintainers
 **For Questions:** See documentation files or create GitHub issue
