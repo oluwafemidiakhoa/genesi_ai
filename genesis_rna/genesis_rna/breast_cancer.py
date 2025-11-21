@@ -124,12 +124,9 @@ class BreastCancerAnalyzer:
             VariantPrediction with pathogenicity and effect predictions
         """
         with torch.no_grad():
-            # Encode sequences
-            wt_encoded = self.tokenizer.encode(wild_type_rna, max_len=self.config.max_len)
-            mut_encoded = self.tokenizer.encode(mutant_rna, max_len=self.config.max_len)
-
-            wt_ids = torch.tensor(wt_encoded['input_ids']).unsqueeze(0).to(self.device)
-            mut_ids = torch.tensor(mut_encoded['input_ids']).unsqueeze(0).to(self.device)
+            # Encode sequences (tokenizer.encode returns tensor directly)
+            wt_ids = self.tokenizer.encode(wild_type_rna, max_len=self.config.max_len).unsqueeze(0).to(self.device)
+            mut_ids = self.tokenizer.encode(mutant_rna, max_len=self.config.max_len).unsqueeze(0).to(self.device)
 
             # Forward pass
             wt_output = self.model(wt_ids)
@@ -220,8 +217,7 @@ class BreastCancerAnalyzer:
         # In practice, would compare against reference sequence
 
         with torch.no_grad():
-            encoded = self.tokenizer.encode(variant_rna, max_len=self.config.max_len)
-            input_ids = torch.tensor(encoded['input_ids']).unsqueeze(0).to(self.device)
+            input_ids = self.tokenizer.encode(variant_rna, max_len=self.config.max_len).unsqueeze(0).to(self.device)
 
             output = self.model(input_ids)
 
@@ -362,8 +358,7 @@ class mRNATherapeuticDesigner:
     def _evaluate_mrna(self, sequence: str) -> Dict[str, float]:
         """Evaluate mRNA sequence with Genesis RNA model"""
         with torch.no_grad():
-            encoded = self.tokenizer.encode(sequence, max_len=min(len(sequence) + 10, 512))
-            input_ids = torch.tensor(encoded['input_ids']).unsqueeze(0).to(self.device)
+            input_ids = self.tokenizer.encode(sequence, max_len=min(len(sequence) + 10, 512)).unsqueeze(0).to(self.device)
 
             output = self.model(input_ids)
 
@@ -498,8 +493,7 @@ class NeoantigenDiscovery:
     def _predict_immunogenicity(self, sequence: str) -> float:
         """Predict if RNA sequence will generate immunogenic peptide"""
         with torch.no_grad():
-            encoded = self.tokenizer.encode(sequence, max_len=self.config.max_len)
-            input_ids = torch.tensor(encoded['input_ids']).unsqueeze(0).to(self.device)
+            input_ids = self.tokenizer.encode(sequence, max_len=self.config.max_len).unsqueeze(0).to(self.device)
 
             output = self.model(input_ids)
 
