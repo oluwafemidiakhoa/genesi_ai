@@ -1,0 +1,26 @@
+# ═══════════════════════════════════════════════════════════════════════
+# COPY-PASTE THIS INTO YOUR COLAB NOTEBOOK (after MODEL_PATH is defined)
+# ═══════════════════════════════════════════════════════════════════════
+
+import sys
+
+# Remove cached modules
+for module in ['genesis_rna.breast_cancer', 'genesis_rna.model', 'genesis_rna.tokenization', 'genesis_rna.config']:
+    if module in sys.modules:
+        del sys.modules[module]
+
+# Re-import with fixes
+sys.path.insert(0, '/content/genesi_ai/genesis_rna')
+from genesis_rna.breast_cancer import BreastCancerAnalyzer, mRNATherapeuticDesigner, NeoantigenDiscovery
+
+# Reinitialize all tools
+analyzer = BreastCancerAnalyzer(MODEL_PATH, device=device)
+designer = mRNATherapeuticDesigner(MODEL_PATH, device=device)
+neoantigen_designer = NeoantigenDiscovery(MODEL_PATH, device=device)
+
+print("✅ All tools reloaded with fixes!")
+print(f"   • analyzer - BreastCancerAnalyzer")
+print(f"   • designer - mRNATherapeuticDesigner")
+print(f"   • neoantigen_designer - NeoantigenDiscovery")
+print(f"\n   Device: {device}")
+print(f"   Model: {MODEL_PATH}")
