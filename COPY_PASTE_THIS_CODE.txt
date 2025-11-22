@@ -1,0 +1,78 @@
+# ═══════════════════════════════════════════════════════════════════════
+# STEP 1: PULL LATEST CODE FROM GITHUB
+# ═══════════════════════════════════════════════════════════════════════
+!cd /content/genesi_ai && git pull origin main
+
+# ═══════════════════════════════════════════════════════════════════════
+# STEP 2: RELOAD ALL MODULES (REMOVES OLD CACHED CODE)
+# ═══════════════════════════════════════════════════════════════════════
+import sys
+
+# Remove cached modules
+for module in ['genesis_rna.breast_cancer', 'genesis_rna.model', 'genesis_rna.tokenization', 'genesis_rna.config']:
+    if module in sys.modules:
+        del sys.modules[module]
+
+# Re-import with fixes
+sys.path.insert(0, '/content/genesi_ai/genesis_rna')
+from genesis_rna.breast_cancer import BreastCancerAnalyzer, mRNATherapeuticDesigner, NeoantigenDiscovery
+
+# Reinitialize all tools
+analyzer = BreastCancerAnalyzer(MODEL_PATH, device=device)
+designer = mRNATherapeuticDesigner(MODEL_PATH, device=device)
+neoantigen_designer = NeoantigenDiscovery(MODEL_PATH, device=device)
+
+print("✅ All tools reloaded with fixes!")
+print(f"   • analyzer - BreastCancerAnalyzer")
+print(f"   • designer - mRNATherapeuticDesigner")
+print(f"   • neoantigen_designer - NeoantigenDiscovery")
+
+# ═══════════════════════════════════════════════════════════════════════
+# STEP 3: CORRECTED mRNA THERAPEUTIC DESIGN CODE
+# ═══════════════════════════════════════════════════════════════════════
+print("="*70)
+print("mRNA Therapeutic Design: p53")
+print("="*70)
+
+p53_protein = "MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDD"
+
+print(f"\nTarget: p53 tumor suppressor")
+print(f"Length: {len(p53_protein)} amino acids")
+print(f"\n⚙️ Designing mRNA...")
+
+# CORRECT METHOD: design() with optimization_goals dict
+therapeutic = designer.design(
+    protein_sequence=p53_protein,
+    optimization_goals={
+        'stability': 0.95,
+        'translation': 0.90,
+        'immunogenicity': 0.1
+    }
+)
+
+print(f"\n✅ Design complete!")
+print(f"\n{'Property':<30} {'Value'}")
+print("="*50)
+print(f"{'Length:':<30} {therapeutic.length} nt")
+print(f"{'Stability:':<30} {therapeutic.stability_score:.3f}")
+print(f"{'Translation:':<30} {therapeutic.translation_score:.3f}")
+print(f"{'Immunogenicity:':<30} {therapeutic.immunogenicity_score:.3f}")
+print(f"{'Half-life:':<30} {therapeutic.half_life_hours:.1f} hours")
+
+print(f"\n🧬 Sequence (first 100 nt):")
+print(f"   {therapeutic.sequence[:100]}...")
+
+# Save to Drive
+import json
+result = {
+    'protein': p53_protein,
+    'mrna': therapeutic.sequence,
+    'stability': therapeutic.stability_score,
+    'translation': therapeutic.translation_score,
+    'half_life': therapeutic.half_life_hours
+}
+
+with open(f"{DRIVE_DIR}/results/p53_therapeutic.json", 'w') as f:
+    json.dump(result, f, indent=2)
+
+print(f"\n💾 Saved to {DRIVE_DIR}/results/p53_therapeutic.json")
