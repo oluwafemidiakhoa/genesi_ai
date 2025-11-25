@@ -309,7 +309,7 @@ For questions or collaborations: [your-email@example.com]
 """
 
 # Create Gradio interface
-with gr.Blocks(title="Genesis RNA - BRCA Variant Classifier", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="Genesis RNA - BRCA Variant Classifier") as demo:
 
     gr.Markdown(f"# {TITLE}")
     gr.Markdown(DESCRIPTION)
