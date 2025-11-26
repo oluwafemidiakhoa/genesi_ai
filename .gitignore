@@ -30,3 +30,4 @@ checkpoints/**/logs/
 # Keep checkpoint directory structure and documentation
 !checkpoints/README.md
 !checkpoints/**/.gitkeep
+huggingface_space/
