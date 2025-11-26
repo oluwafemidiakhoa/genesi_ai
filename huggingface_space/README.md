@@ -61,7 +61,7 @@ If you use Genesis RNA in your research, please cite:
 ```bibtex
 @software{genesis_rna_2025,
   title={Genesis RNA: A Foundation Model for Cancer Variant Classification},
-  author={[Your Name]},
+  author={Oluwafemi Idiakhoa},
   year={2025},
   url={https://github.com/oluwafemidiakhoa/genesi_ai}
 }
@@ -75,7 +75,7 @@ If you use Genesis RNA in your research, please cite:
 
 ## 📧 Contact
 
-For questions or collaborations: [your-email@example.com]
+For questions or collaborations: Contact via [GitHub Discussions](https://github.com/oluwafemidiakhoa/genesi_ai/discussions)
 
 ## 📄 License
 
