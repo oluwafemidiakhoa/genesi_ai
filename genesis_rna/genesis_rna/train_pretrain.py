@@ -443,8 +443,16 @@ def main():
     tokenizer = RNATokenizer()
 
     # Load or create dataset
-    if args.use_dummy_data or not args.data_path:
-        print("Creating dummy dataset for testing...")
+    if args.use_dummy_data:
+        # Explicit dummy data mode (for quick testing only)
+        print("=" * 70)
+        print("⚠️  USING DUMMY DATA (FOR TESTING ONLY)")
+        print("=" * 70)
+        print("This mode uses synthetic random sequences.")
+        print("NOT suitable for biological research or publication.")
+        print("Use --data_path for real data training.")
+        print("=" * 70 + "\n")
+
         train_samples = create_dummy_dataset(
             num_samples=1000,
             min_len=50,
@@ -457,41 +465,50 @@ def main():
             max_len=200,
             with_structure=True,
         )
-    else:
+
+    elif args.data_path:
         # Load real data from pickle file
         print(f"\nLoading real data from: {args.data_path}")
 
         # Check if data path exists
         data_path = Path(args.data_path)
         if not data_path.exists():
-            print(f"\n⚠️  ERROR: Data path not found: {args.data_path}")
-            print("\n📋 To generate sample data, run:")
-            print(f"    cd genesis_rna/scripts")
-            print(f"    python generate_sample_ncrna.py --output {args.data_path} --num_samples 5000")
-            print("\n💡 Or use dummy data for quick testing:")
-            print(f"    python -m genesis_rna.train_pretrain --use_dummy_data")
-            print("\n🔄 Falling back to dummy data for this run...\n")
+            # RAISE ERROR - Do not fallback silently
+            raise FileNotFoundError(
+                f"\n{'='*70}\n"
+                f"ERROR: Data path not found: {args.data_path}\n"
+                f"{'='*70}\n\n"
+                f"To fix this issue:\n\n"
+                f"1. Generate sample ncRNA data:\n"
+                f"   cd genesis_rna/scripts\n"
+                f"   python generate_sample_ncrna.py --output {args.data_path} --num_samples 5000\n\n"
+                f"2. Or use dummy data for quick testing (NOT for research):\n"
+                f"   python -m genesis_rna.train_pretrain --use_dummy_data\n\n"
+                f"3. Or download real Ensembl ncRNA data:\n"
+                f"   See TRAINING_GUIDE.md for instructions\n"
+                f"\n{'='*70}\n"
+            )
 
-            # Fall back to dummy data
-            train_samples = create_dummy_dataset(
-                num_samples=1000,
-                min_len=50,
-                max_len=200,
-                with_structure=True,
-            )
-            val_samples = create_dummy_dataset(
-                num_samples=100,
-                min_len=50,
-                max_len=200,
-                with_structure=True,
-            )
-        else:
-            # Path exists, proceed with loading
-            train_samples, val_samples = load_pickle_data(
-                args.data_path,
-                max_samples=args.max_samples if hasattr(args, 'max_samples') else None,
-                train_split=0.9,
-            )
+        # Path exists, proceed with loading
+        train_samples, val_samples = load_pickle_data(
+            args.data_path,
+            max_samples=args.max_samples if hasattr(args, 'max_samples') else None,
+            train_split=0.9,
+        )
+
+    else:
+        # Neither --use_dummy_data nor --data_path specified
+        raise ValueError(
+            f"\n{'='*70}\n"
+            f"ERROR: Must specify either --use_dummy_data or --data_path\n"
+            f"{'='*70}\n\n"
+            f"Usage:\n\n"
+            f"For quick testing (synthetic data):\n"
+            f"  python -m genesis_rna.train_pretrain --use_dummy_data\n\n"
+            f"For real training (biological data):\n"
+            f"  python -m genesis_rna.train_pretrain --data_path data/human_ncrna\n"
+            f"\n{'='*70}\n"
+        )
 
     # Create datasets
     train_dataset = RNAPretrainDataset(
