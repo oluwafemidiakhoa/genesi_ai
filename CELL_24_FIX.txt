@@ -1,0 +1,31 @@
+# ═══════════════════════════════════════════════════════════════════════
+# FIXED CELL 24 - REAL BRCA SEQUENCES (NO LABEL LEAKAGE)
+# ═══════════════════════════════════════════════════════════════════════
+# Replace Cell 24 in breast_cancer_research_colab.ipynb with this code
+
+print("🧬 Fetching REAL BRCA sequences from Ensembl...")
+print("   This uses the new real data pipeline (NO synthetic data)")
+print("   Time: 5-10 minutes for all variants\n")
+
+%cd /content/genesi_ai
+
+# Download scripts
+!wget -q https://raw.githubusercontent.com/oluwafemidiakhoa/genesi_ai/main/scripts/hgvs_parser.py -O scripts/hgvs_parser.py
+!wget -q https://raw.githubusercontent.com/oluwafemidiakhoa/genesi_ai/main/scripts/fetch_real_brca_sequences.py -O scripts/fetch_real_brca_sequences.py
+
+# Fetch REAL sequences
+!python scripts/fetch_real_brca_sequences.py \
+    --clinvar /content/clinvar_brca_variants.csv \
+    --output /content/clinvar_brca_real_sequences.csv
+
+# Load real sequences
+import pandas as pd
+df = pd.read_csv('/content/clinvar_brca_real_sequences.csv')
+
+print(f"\n✅ Loaded {len(df):,} REAL BRCA sequences")
+print(f"   - Variants parsed: {len(df[df['SequenceType']=='variant']):,}")
+print(f"   - Reference fallback: {len(df[df['SequenceType']=='reference_fallback']):,}")
+print(f"\n✅ NO LABEL LEAKAGE - sequences generated without label information")
+
+# Continue with rest of Cell 24 (embedding extraction, classifier training)
+# ... (rest remains the same)
