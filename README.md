@@ -1,11 +1,26 @@
 # Genesis RNA: BRCA Variant Classifier
 
+## 🚨 CRITICAL UPDATE (2025-01-27)
+
+**The claimed 100% accuracy was based on SYNTHETIC DATA with LABEL LEAKAGE and is INVALID.**
+
+Reddit ML community correctly identified that the Colab notebook generates **fake RNA sequences** with an artificial "AAAA" marker inserted only for pathogenic variants. The model learned to detect this marker, **NOT actual variant biology**.
+
+**Problem:** Cell 24 code: `if row.get('Label') == 1: sequence = sequence[:mid] + 'AAAA' + sequence[mid+4:]`
+
+**Status:** ❌ **DO NOT USE** for any purpose until retrained with real genomic data.
+
+**See:** [CRITICAL_LABEL_LEAKAGE.md](CRITICAL_LABEL_LEAKAGE.md) for complete details and fix plan.
+
+---
+
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/oluwafemidiakhoa/genesi_ai/blob/main/genesis_rna/breast_cancer_research_colab.ipynb)
 [![HuggingFace Space](https://img.shields.io/badge/🤗%20Hugging%20Face-Space-blue)](https://huggingface.co/spaces/mgbam/genesis-rna-brca-classifier)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-**An AI system achieving 100% accuracy on 55,234 breast cancer genetic variants**
+**~~An AI system achieving 100% accuracy on 55,234 breast cancer genetic variants~~**
+**RETRACTED: Accuracy was based on synthetic data with label leakage**
 
 ![Genesis RNA Summary](visualizations/genesis_rna_summary.png)
 
@@ -13,28 +28,35 @@
 
 ## 🎯 Overview
 
-Genesis RNA is a transformer-based RNA foundation model that achieves **perfect classification** of BRCA1/BRCA2 genetic variants. The system addresses the critical "Variant of Uncertain Significance" (VUS) problem that affects 40% of genetic test results, leaving patients without clear guidance.
+Genesis RNA is a transformer-based RNA foundation model ~~that achieves **perfect classification** of BRCA1/BRCA2 genetic variants~~ **currently being retrained with real genomic data after label leakage was discovered**.
 
-### Key Achievements
+### ~~Key Achievements~~ Current Status
 
-- ✅ **100% Accuracy** on 55,234 real clinical variants from NCBI ClinVar
-- ✅ **50,000+ Real ncRNA Sequences** from Ensembl database for training
-- ✅ **256-Dimensional Embeddings** capturing RNA structure and function
-- ✅ **60% FLOPs Reduction** with Adaptive Sparse Training (AST)
-- ✅ **Free and Open Source** - Runs on Google Colab with free T4 GPU
+- ❌ **~~100% Accuracy~~** - INVALID due to synthetic data with label leakage
+- ✅ **50,000+ Real ncRNA Sequences** from Ensembl database for pre-training (this is valid)
+- ✅ **256-Dimensional Embeddings** architecture (this is valid)
+- ✅ **60% FLOPs Reduction** with Adaptive Sparse Training (this is valid)
+- ✅ **Free and Open Source** - Transparency allowed community to catch the issue
 
-### ⚠️ Important Limitations
+### 🚨 CRITICAL ISSUES (Acknowledged 2025-01-27)
 
-**Current Status:** Research prototype undergoing validation
+**Label Leakage in Synthetic Data:**
+- Training used **randomly generated RNA sequences**, not real BRCA1/BRCA2 sequences
+- Pathogenic variants had "AAAA" inserted, benign variants did not
+- Model learned: "Has AAAA? → Pathogenic" (artificial marker, not biology)
+- This completely invalidates the 100% accuracy claim
 
-**Known Issues Identified by Community:**
-- **Domain Shift:** Model pre-trained on ncRNA sequences but evaluated on coding BRCA sequences
-- **Potential Confound:** High accuracy may reflect sequence distribution differences rather than true variant effect prediction
-- **Validation Needed:** Rigorous cross-validation and domain-matched baselines in progress
+**Additional Issues:**
+- Domain shift (ncRNA pre-training vs BRCA evaluation)
+- No baseline comparisons (k-mer methods, CADD, REVEL)
+- Improper train/test split
+- Unnecessary complexity (transformers may be overkill)
 
-See [ADDRESSING_DATA_LEAKAGE_CONCERN.md](ADDRESSING_DATA_LEAKAGE_CONCERN.md) for detailed discussion and planned improvements.
+**See [CRITICAL_LABEL_LEAKAGE.md](CRITICAL_LABEL_LEAKAGE.md) for full technical details.**
 
-**NOT approved for clinical use.** This is a research tool demonstrating ML methodology.
+### ⚠️ DO NOT USE
+
+**NOT approved for clinical use.** Not approved for research use. Not approved for any use until retrained with real data.
 
 ---
 
