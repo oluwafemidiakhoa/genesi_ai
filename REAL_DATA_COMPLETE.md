@@ -1,385 +1,472 @@
-# ✅ COMPLETE: Notebook Now Uses 100% REAL DATA
+# Genesis RNA - Real Data Training Guide
 
-**Status:** FULLY IMPLEMENTED
-**Date:** 2025-11-23
-**Notebook:** `genesis_rna/breast_cancer_research_colab.ipynb`
-
----
-
-## 🎯 Summary
-
-Your Google Colab notebook has been **fully updated** to use 100% real data for breast cancer research. All synthetic/dummy data has been replaced with real biological datasets and Genesis RNA model features.
+**Date:** 2025-01-27
+**Status:** Complete redesign with REAL genomic data (NO synthetic sequences!)
 
 ---
 
-## 📊 What Changed
+## What Changed
 
-### ✅ Cell 12 (NEW): Real ncRNA Download
-**Downloads 50,000+ REAL human ncRNA sequences from Ensembl**
+### BEFORE (Invalidated):
+- Synthetic RNA sequences with random nucleotides
+- "AAAA" marker inserted for pathogenic variants (LABEL LEAKAGE!)
+- 100% accuracy (detecting artificial marker, not biology)
+- Random train/test split (memorization, not learning)
 
-```python
-# Downloads from: ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/ncrna/
-# Size: ~50MB compressed, ~150MB uncompressed
-# Contains: miRNA, lncRNA, and other non-coding RNAs
-# Time: 2-3 minutes to download
+### NOW (Fixed):
+- Real BRCA1/BRCA2 mRNA sequences from Ensembl
+- HGVS parser applies actual variant mutations
+- NO label information used during sequence generation
+- Proper temporal/position-based train/test splits
+- Baseline models tested first (k-mer, Random Forest)
+- Progressive training (start simple, add complexity only if needed)
+- Realistic expectations (70-85%, NOT 100%)
+
+---
+
+## Complete Workflow
+
+### Step 1: Fetch Real BRCA Sequences
+
+Script: [scripts/fetch_real_brca_sequences.py](scripts/fetch_real_brca_sequences.py)
+
+This replaces the synthetic generation that had label leakage.
+
+```bash
+# Download ClinVar BRCA variants (if not done)
+python scripts/download_brca_variants.py \
+    --output data/breast_cancer/clinvar_brca.csv
+
+# Fetch REAL sequences from Ensembl and apply variants
+python scripts/fetch_real_brca_sequences.py \
+    --clinvar data/breast_cancer/clinvar_brca.csv \
+    --output data/breast_cancer/real_sequences.csv \
+    --sample 1000  # Start with 1000 for testing
 ```
-
-**Impact:**
-- Training will use real biological RNA sequences
-- Model learns authentic RNA patterns
-- Better generalization to clinical variants
-
----
-
-### ✅ Cell 13 (UPDATED): Quick Training with Real Data
-**Changed from dummy synthetic data to real ncRNA**
-
-**BEFORE:**
-```python
-!python -m genesis_rna.train_pretrain \
-    --use_dummy_data \  # ← Synthetic dummy data
-    --model_size small
-```
-
-**AFTER:**
-```python
-!python -m genesis_rna.train_pretrain \
-    --data_path ../data/human_ncrna \  # ← REAL ncRNA sequences!
-    --model_size small
-```
-
-**Impact:**
-- Model trained on authentic human ncRNA sequences
-- Learns real RNA biology (not synthetic patterns)
-- Better predictions on real clinical variants
-
----
-
-### ✅ Cells 21-25 (ALREADY REAL): ClinVar BRCA Variants
-**Already downloading and using 55,234 real BRCA1/BRCA2 variants**
 
 **What it does:**
-1. Downloads `variant_summary.txt.gz` from NCBI ClinVar (~500MB)
-2. Filters to BRCA1/BRCA2 variants with clear pathogenicity labels
-3. Creates train/test split
-4. Trains machine learning classifier
+1. Fetches BRCA1 (ENST00000357654) and BRCA2 (ENST00000380152) transcripts from Ensembl
+2. Parses HGVS notation (c.5266dupC, c.123A>T, etc.)
+3. Applies variants to reference sequences
+4. Returns wildtype + mutant RNA sequences
+5. **NO label information used!**
 
-**Data:**
-- 55,234 real clinical variants from ClinVar database
-- Pathogenic vs Benign classifications
-- Real genomic positions and annotations
+**Output CSV columns:**
+- `AlleleID`: ClinVar allele ID
+- `GeneSymbol`: BRCA1 or BRCA2
+- `Name`: HGVS notation
+- `ClinicalSignificance`: Pathogenic/Benign
+- `Label`: 0 (benign) or 1 (pathogenic)
+- `RNA_Sequence`: Mutant RNA sequence (with variant applied)
+- `Wildtype_Sequence`: Reference RNA sequence
+- `SequenceType`: 'variant' or 'reference_fallback'
+- `VariantType`: substitution, deletion, duplication, etc.
 
 ---
 
-### ✅ Cell 24 (UPDATED): Genesis RNA Embeddings ENABLED
-**Replaced simple genomic position with Genesis RNA model embeddings**
+### Step 2: Proper Train/Test Split
 
-**BEFORE (Baseline):**
+Script: [scripts/proper_train_test_split.py](scripts/proper_train_test_split.py)
+
+NEVER use random split - allows memorization!
+
+#### Option A: Temporal Split (Recommended)
+
+Train on old variants, test on new variants.
+
+```bash
+python scripts/proper_train_test_split.py \
+    --input data/breast_cancer/real_sequences.csv \
+    --train_out data/breast_cancer/train_temporal.csv \
+    --test_out data/breast_cancer/test_temporal.csv \
+    --method temporal \
+    --split_date 2020-01-01
+```
+
+**What it does:**
+- Train: Variants submitted before 2020-01-01
+- Test: Variants submitted after 2020-01-01
+- Simulates real-world: predict pathogenicity of newly discovered variants
+
+#### Option B: Position-Based Split
+
+Train on first half of gene, test on second half.
+
+```bash
+python scripts/proper_train_test_split.py \
+    --input data/breast_cancer/real_sequences.csv \
+    --train_out data/breast_cancer/train_position.csv \
+    --test_out data/breast_cancer/test_position.csv \
+    --method position \
+    --gene BRCA1 \
+    --split_fraction 0.5
+```
+
+**What it does:**
+- Train: Positions 1 to median
+- Test: Positions median to end
+- Prevents memorization of position-specific patterns
+
+#### Option C: Leave-One-Gene-Out
+
+Train on BRCA1, test on BRCA2 (strictest test!).
+
+```bash
+python scripts/proper_train_test_split.py \
+    --input data/breast_cancer/real_sequences.csv \
+    --train_out data/breast_cancer/train_brca1.csv \
+    --test_out data/breast_cancer/test_brca2.csv \
+    --method leave_gene_out \
+    --test_gene BRCA2
+```
+
+**What it does:**
+- Train: All BRCA1 variants
+- Test: All BRCA2 variants
+- Tests if model generalizes across genes
+
+---
+
+### Step 3: Test Baseline Models FIRST
+
+Script: [scripts/baseline_models.py](scripts/baseline_models.py)
+
+If k-mer counting gets >80%, we don't need deep learning!
+
+```bash
+python scripts/baseline_models.py \
+    --train data/breast_cancer/train_temporal.csv \
+    --test data/breast_cancer/test_temporal.csv \
+    --output results/baseline_comparison.csv
+```
+
+**What it tests:**
+1. **K-mer + Logistic Regression** (simplest)
+   - Just counting trinucleotides
+   - Target: 75-80% accuracy
+
+2. **Nearest Neighbor** (sequence matching test)
+   - Finds most similar training sequence
+   - If >90%, model is just memorizing!
+
+3. **Biological Features + Random Forest**
+   - GC content, nucleotide composition, repeats
+   - Target: 80-82% accuracy
+
+**Decision:**
+- If baseline e80%: **STOP** - use this model (no need for deep learning)
+- If baseline 75-80%: Deep learning MAY help (+3-5%)
+- If baseline <75%: Deep learning justified
+
+---
+
+### Step 4: Progressive Model Training
+
+Script: [scripts/progressive_model_training.py](scripts/progressive_model_training.py)
+
+Start simple, add complexity ONLY if needed!
+
+```bash
+python scripts/progressive_model_training.py \
+    --train data/breast_cancer/train_temporal.csv \
+    --test data/breast_cancer/test_temporal.csv \
+    --output_dir results/progressive_training
+```
+
+**Decision Tree:**
+1. **K-mer + Logistic Regression**
+   - If e80%: **STOP** (good enough!)
+
+2. **K-mer + Random Forest**
+   - If e82%: **STOP** (excellent!)
+
+3. **Word2Vec + CNN** (not yet implemented)
+   - If e85%: **STOP** (outstanding!)
+
+4. **Genesis RNA Transformer** (only if truly needed)
+   - Expected: 85-90% (NOT 100%!)
+   - Use ONLY if simpler methods all failed
+
+---
+
+### Step 5: Train Genesis RNA (If Baseline Failed)
+
+**Only proceed if baseline models achieved <80%!**
+
+#### Update Training Config
+
+Edit `configs/train_t4_optimized.yaml`:
+
+```yaml
+training:
+  # Use REAL data (no synthetic generation!)
+  data_path: data/breast_cancer/train_temporal.csv
+
+  # Realistic loss weights (NO label leakage)
+  mlm_loss_weight: 1.0
+  structure_loss_weight: 0.8
+  pair_loss_weight: 3.0
+
+  # Proper evaluation
+  use_focal_loss_for_pairs: true
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+
+  # Expect 80-90% accuracy (NOT 100%!)
+  early_stopping_patience: 5
+```
+
+#### Train Model
+
+```bash
+cd genesis_rna
+
+python -m genesis_rna.train_pretrain \
+    --config ../configs/train_t4_optimized.yaml \
+    --data_path ../data/breast_cancer/train_temporal.csv \
+    --output_dir ../checkpoints/real_data_v1 \
+    --num_epochs 30
+```
+
+**Expected Results:**
+- MLM Accuracy: >35%
+- Structure Accuracy: >85%
+- Pair F1: >2%
+- **Overall Validation Accuracy: 80-90% (NOT 100%!)**
+
+**If you get 100% accuracy:**
+- DATA LEAKAGE DETECTED!
+- Audit immediately for label leakage
+- Check train/test split for overlap
+- Inspect sequences for artificial markers
+
+---
+
+### Step 6: Comprehensive Evaluation
+
+Script: [scripts/comprehensive_evaluation.py](scripts/comprehensive_evaluation.py)
+
+```bash
+# First, generate predictions from your model
+# (This depends on your model - either baseline or Genesis RNA)
+
+python scripts/comprehensive_evaluation.py \
+    --predictions results/model_predictions.csv \
+    --test_data data/breast_cancer/test_temporal.csv \
+    --output results/evaluation_results.json
+```
+
+**What it checks:**
+1. **Standard metrics**: Accuracy, F1, AUC-ROC, Precision, Recall
+2. **100% accuracy check**: Flags suspiciously high performance
+3. **Random baseline comparison**: Ensures model learned something
+4. **Per-gene evaluation**: BRCA1 vs BRCA2 performance
+5. **Per-variant-type evaluation**: Substitutions, deletions, etc.
+6. **Error analysis**: False positives and false negatives
+7. **Clinical interpretation**: Sensitivity, specificity, PPV, NPV
+
+---
+
+## HGVS Parser Features
+
+Script: [scripts/hgvs_parser.py](scripts/hgvs_parser.py)
+
+Supports all common variant types:
+
+### Substitutions
 ```python
-# Only 2 simple features:
-# - Genomic position (weak signal)
-# - Gene ID (BRCA1 vs BRCA2)
-feature_columns = ['Feature_Position_Norm', 'Feature_Gene']
+c.123A>T  # Position 123, A replaced by T
 ```
 
-**Accuracy:** 67%
-**AUC-ROC:** 0.516
-
-**AFTER (Genesis RNA Embeddings):**
+### Deletions
 ```python
-USE_GENESIS_EMBEDDINGS = True  # ← NOW ENABLED!
-
-# 256-dimensional embeddings from trained Genesis RNA model
-# Rich feature representation of RNA sequences
-feature_columns = [f'Embedding_{i}' for i in range(256)]
+c.123del       # Delete single nucleotide at 123
+c.123_125del   # Delete range 123-125
 ```
 
-**Expected Accuracy:** 85-90%
-**Expected AUC-ROC:** 0.85-0.90
-
-**Impact:**
-- 256 rich features (vs 2 simple features)
-- Captures RNA structure, stability, and biological properties
-- 20-25% accuracy improvement
-- Clinically meaningful predictions
-
----
-
-## 📈 Performance Comparison
-
-| Configuration | Training Data | Variant Features | Accuracy | AUC-ROC | Time |
-|---------------|---------------|------------------|----------|---------|------|
-| **Previous (Baseline)** | Dummy synthetic | Genomic position (2 features) | 67% | 0.516 | 30 min |
-| **NOW (Production)** | 50K+ real ncRNA | Genesis embeddings (256 features) | **85-90%** | **0.85-0.90** | 2-4 hours |
-
-**Improvement:**
-- ✅ **+20-25% accuracy** (67% → 85-90%)
-- ✅ **+65% AUC-ROC** (0.516 → 0.85-0.90)
-- ✅ **128x more features** (2 → 256)
-- ✅ **Clinically meaningful** predictions
-
----
-
-## 🔬 All Real Datasets Now Active
-
-### 1. Human ncRNA Sequences (Training Data)
-- **Source:** Ensembl database
-- **Size:** 50,000+ sequences
-- **Types:** miRNA, lncRNA, snoRNA, snRNA, etc.
-- **Use:** Training Genesis RNA foundation model
-- **Downloaded by:** Cell 12
-
-### 2. BRCA Variants (Classification Task)
-- **Source:** NCBI ClinVar database
-- **Size:** 55,234 variants (BRCA1/BRCA2)
-- **Labels:** Pathogenic vs Benign
-- **Use:** Variant effect prediction
-- **Downloaded by:** Cell 22
-
-### 3. Genesis RNA Embeddings (ML Features)
-- **Source:** Trained Genesis RNA model
-- **Dimension:** 256 features per variant
-- **Content:** RNA sequence representations
-- **Use:** Rich features for classification
-- **Enabled in:** Cell 24
-
----
-
-## 🚀 How to Run
-
-### Quick Start (30 minutes - Testing)
-1. Open notebook in Google Colab
-2. Run all cells from top to bottom
-3. Quick training uses real ncRNA data now
-4. Results show baseline + Genesis embeddings performance
-
-### Full Production Run (2-4 hours - Research)
-1. Open notebook in Google Colab
-2. **Skip Cell 13** (Quick Training)
-3. **Run Cell 14** (Full Training with real data)
-4. Train on 50K+ real ncRNA sequences
-5. Classify 55K+ real BRCA variants with Genesis embeddings
-6. Get production-quality results
-
----
-
-## 📋 Expected Results
-
-### Training (Cell 13 or 14)
-```
-Training Genesis RNA on REAL human ncRNA...
-✅ Downloaded 50,000+ ncRNA sequences
-🏋️ Training on real biological data
-📊 Final metrics:
-   - MLM Accuracy: >35%
-   - Structure Accuracy: >85%
-   - Model saved to checkpoints/
-```
-
-### ClinVar Download (Cell 22-23)
-```
-📥 Downloading ClinVar database...
-✅ Downloaded 55,234 BRCA variants
-📊 Statistics:
-   - Pathogenic: ~15,000
-   - Benign: ~40,000
-   - BRCA1: ~30,000
-   - BRCA2: ~25,000
-```
-
-### Classification with Genesis Embeddings (Cell 24)
-```
-🤖 Training IMPROVED Classifier with Genesis RNA Embeddings
-✅ Created 256-dimensional embeddings
-🏋️ Training on 44,187 variants
-📊 Test set: 11,047 variants
-
-RESULTS:
-   Accuracy: 87%  (vs 67% baseline)
-   AUC-ROC: 0.88  (vs 0.516 baseline)
-
-   Confusion Matrix:
-                   Predicted Benign  Predicted Pathogenic
-   Actual Benign        7,800              400
-   Actual Pathogenic      800            2,047
-```
-
----
-
-## 💡 What This Means for Your Research
-
-### Clinical Impact
-1. **Better Predictions:** 85-90% accuracy enables confident variant classification
-2. **Reduced VUS:** Can reclassify Variants of Uncertain Significance
-3. **Personalized Medicine:** Identify patients at risk for targeted screening
-4. **Drug Development:** Understand variant effects for therapeutic design
-
-### Research Impact
-1. **Real Biology:** Model learns authentic RNA patterns
-2. **Publishable Results:** Uses established databases (Ensembl, ClinVar)
-3. **Reproducible:** Clear data sources and processing pipeline
-4. **Extensible:** Can add more genes beyond BRCA1/BRCA2
-
-### Technical Impact
-1. **Rich Features:** 256-dimensional embeddings capture RNA complexity
-2. **Transfer Learning:** Pre-trained Genesis model generalizes to new tasks
-3. **Scalable:** Pipeline works for thousands of variants
-4. **Validated:** Uses gold-standard ClinVar annotations
-
----
-
-## 🔧 Customization Options
-
-### To Focus on Specific Genes
-Edit Cell 23 to filter for your genes of interest:
+### Insertions
 ```python
-# Change this line:
-brca_df = df[df['GeneSymbol'].isin(['BRCA1', 'BRCA2'])].copy()
-
-# To your genes:
-brca_df = df[df['GeneSymbol'].isin(['TP53', 'PTEN', 'ATM'])].copy()
+c.123_124insAT  # Insert AT between 123 and 124
 ```
 
-### To Use Simple Features (Faster)
-Edit Cell 24:
+### Duplications
 ```python
-# Disable Genesis embeddings for quick testing
-USE_GENESIS_EMBEDDINGS = False  # ← Set to False
+c.5266dupC      # Duplicate C at position 5266 (famous BRCA1 variant!)
+c.123_125dup    # Duplicate range 123-125
 ```
 
-### To Adjust Training Duration
-Edit Cell 13 or 14:
+### Indels (Deletion-Insertion)
 ```python
-# Reduce epochs for faster training
---num_epochs 3 \  # Instead of 5 or 10
-
-# Or reduce batch size for less memory
---batch_size 16 \  # Instead of 32
+c.123delinsAT       # Delete at 123, insert AT
+c.123_125delinsGGG  # Delete 123-125, insert GGG
 ```
 
 ---
 
-## 📁 Files Modified
+## Data Leakage Checklist
 
-### Notebook
-- `genesis_rna/breast_cancer_research_colab.ipynb`
-  - Cell 12: NEW - Downloads real ncRNA
-  - Cell 13: UPDATED - Uses real ncRNA for training
-  - Cell 24: UPDATED - Uses Genesis embeddings
-  - Total cells: 31
+**Before training, verify:**
 
-### Scripts (Automation)
-- `switch_to_real_data.py` - Automates switching to real ncRNA data
-- `enable_genesis_embeddings.py` - Enables Genesis embeddings in Cell 24
-
-### Documentation
-- `HOW_TO_USE_REAL_DATA.md` - Guide for using real datasets
-- `REAL_DATA_COMPLETE.md` - This file (completion summary)
-
----
-
-## ✅ Verification Checklist
-
-Check that your notebook has these changes:
-
-- [ ] **Cell 12 exists** and downloads from `ftp.ensembl.org`
-- [ ] **Cell 13 uses** `--data_path ../data/human_ncrna` (not `--use_dummy_data`)
-- [ ] **Cell 22-25 exist** and download from `ftp.ncbi.nlm.nih.gov/pub/clinvar`
-- [ ] **Cell 24 has** `USE_GENESIS_EMBEDDINGS = True`
-- [ ] Total cells = 31 (was 30 before Cell 12 was added)
-
-**To verify:**
+### 1. No Label Information in Sequence Generation
 ```python
-import json
-nb = json.load(open('genesis_rna/breast_cancer_research_colab.ipynb'))
-print(f"Total cells: {len(nb['cells'])}")  # Should be 31
+# BAD (label leakage):
+if row.get('Label') == 1:
+    sequence = sequence + 'AAAA'
 
-# Check Cell 12
-cell_12_source = ''.join(nb['cells'][12]['source'])
-print("Cell 12 downloads ncRNA:", 'Ensembl' in cell_12_source)
-
-# Check Cell 13
-cell_13_source = ''.join(nb['cells'][13]['source'])
-print("Cell 13 uses real data:", '--data_path' in cell_13_source)
-print("Cell 13 NOT using dummy:", '--use_dummy_data' not in cell_13_source)
-
-# Check Cell 24
-cell_24_source = ''.join(nb['cells'][24]['source'])
-print("Cell 24 uses Genesis:", 'USE_GENESIS_EMBEDDINGS = True' in cell_24_source)
+# GOOD (no label information):
+sequence = fetch_ensembl_transcript(gene)
+mutant = apply_hgvs_variant(sequence, hgvs)
 ```
 
-**All checks should be:** ✅ True
+### 2. No Train/Test Overlap
+```bash
+# Run data leakage audit
+python scripts/audit_data_leakage.py \
+    --train data/breast_cancer/train_temporal.csv \
+    --test data/breast_cancer/test_temporal.csv
+```
+
+### 3. No Artificial Markers
+```python
+# Check for suspicious patterns
+train_df['has_AAAA'] = train_df['RNA_Sequence'].str.contains('AAAA')
+print(train_df.groupby('Label')['has_AAAA'].mean())
+
+# Should be ~equal for both labels (0 and 1)
+# If pathogenic variants have MORE 'AAAA', that's LEAKAGE!
+```
+
+### 4. Proper Split Strategy
+```
+ Temporal split (train old, test new)
+ Position split (train first half, test second half)
+ Leave-one-gene-out (train BRCA1, test BRCA2)
+
+L Random stratified split (allows memorization)
+```
 
 ---
 
-## 🎯 Next Steps
+## Realistic Performance Expectations
 
-### Immediate (Run the Notebook)
-1. Open `genesis_rna/breast_cancer_research_colab.ipynb` in Google Colab
-2. Connect to GPU runtime (Runtime → Change runtime type → T4 GPU)
-3. Run all cells from top to bottom
-4. Wait 2-4 hours for training + analysis
-5. Review results and download predictions
+### Baseline Models (K-mer, Random Forest)
+- **Target**: 75-80% accuracy
+- **AUC-ROC**: 0.80-0.85
+- **Interpretation**: Good performance for simple models
 
-### Short Term (Validate Results)
-1. Compare baseline (67%) vs Genesis embeddings (85-90%)
-2. Analyze specific BRCA1/BRCA2 variants of interest
-3. Review confusion matrix for false positives/negatives
-4. Export predictions to CSV for further analysis
+### Word2Vec + CNN
+- **Target**: 80-85% accuracy
+- **AUC-ROC**: 0.85-0.90
+- **Interpretation**: Excellent performance
 
-### Long Term (Extend Research)
-1. **Add more genes:** Expand beyond BRCA1/BRCA2 (TP53, PTEN, ATM, etc.)
-2. **Fine-tune model:** Train specifically on cancer variants
-3. **Validate predictions:** Compare to published functional assays
-4. **Publish results:** Write paper on Genesis RNA for variant classification
-5. **Clinical deployment:** Work with genetic counselors to test in clinic
+### Genesis RNA Transformer
+- **Target**: 85-90% accuracy
+- **AUC-ROC**: 0.90-0.95
+- **Interpretation**: State-of-the-art performance
 
----
-
-## 🙏 Acknowledgments
-
-**Data Sources:**
-- **Ensembl:** Human ncRNA sequences (EMBL-EBI)
-- **ClinVar:** BRCA variant annotations (NCBI)
-- **Genesis RNA:** Foundation model architecture
-
-**Thanks to:**
-- Ensembl team for maintaining comprehensive RNA databases
-- ClinVar/NCBI for curating clinical variant data
-- Open-source community for PyTorch, BioPython, scikit-learn
+### 100% Accuracy
+- **Interpretation**: DATA LEAKAGE!
+- **Action**: Audit immediately, do NOT use model
 
 ---
 
-## 📞 Support
+## Quick Start (Complete Pipeline)
 
-**If you encounter issues:**
-1. Check [TRAINING_GUIDE.md](TRAINING_GUIDE.md) for troubleshooting
-2. Review [HOW_TO_USE_REAL_DATA.md](HOW_TO_USE_REAL_DATA.md) for data details
-3. Open an issue on GitHub with error messages
-4. Check that GPU runtime is enabled in Colab
+```bash
+# 1. Fetch real sequences
+python scripts/fetch_real_brca_sequences.py \
+    --clinvar data/breast_cancer/clinvar_brca.csv \
+    --output data/breast_cancer/real_sequences.csv
 
-**Common issues:**
-- **OOM Error:** Reduce batch size to 16 in Cell 13/14
-- **Download timeout:** Restart runtime and try again
-- **Low accuracy:** Ensure USE_GENESIS_EMBEDDINGS = True in Cell 24
+# 2. Proper train/test split
+python scripts/proper_train_test_split.py \
+    --input data/breast_cancer/real_sequences.csv \
+    --train_out data/breast_cancer/train.csv \
+    --test_out data/breast_cancer/test.csv \
+    --method temporal
+
+# 3. Test baselines FIRST
+python scripts/baseline_models.py \
+    --train data/breast_cancer/train.csv \
+    --test data/breast_cancer/test.csv \
+    --output results/baseline_comparison.csv
+
+# 4. Progressive training (start simple)
+python scripts/progressive_model_training.py \
+    --train data/breast_cancer/train.csv \
+    --test data/breast_cancer/test.csv \
+    --output_dir results/progressive
+
+# 5. If baseline failed (<80%), train Genesis RNA
+cd genesis_rna
+python -m genesis_rna.train_pretrain \
+    --config ../configs/train_t4_optimized.yaml \
+    --data_path ../data/breast_cancer/train.csv \
+    --output_dir ../checkpoints/real_data_v1
+
+# 6. Comprehensive evaluation
+cd ..
+python scripts/comprehensive_evaluation.py \
+    --predictions results/model_predictions.csv \
+    --test_data data/breast_cancer/test.csv \
+    --output results/evaluation.json
+```
 
 ---
 
-## 🎊 Congratulations!
+## New Files Created
 
-Your notebook is now using **100% real data** for production breast cancer research!
+### Data Pipeline:
+- [scripts/hgvs_parser.py](scripts/hgvs_parser.py) - Parse and apply HGVS variants
+- [scripts/fetch_real_brca_sequences.py](scripts/fetch_real_brca_sequences.py) - Fetch real Ensembl sequences
+- [scripts/proper_train_test_split.py](scripts/proper_train_test_split.py) - Temporal/position-based splits
 
-**What you have:**
-- ✅ 50,000+ real human ncRNA sequences
-- ✅ 55,000+ real BRCA clinical variants
-- ✅ 256-dimensional Genesis RNA embeddings
-- ✅ 85-90% variant classification accuracy
-- ✅ Production-ready research pipeline
+### Evaluation:
+- [scripts/baseline_models.py](scripts/baseline_models.py) - K-mer, NN, biological features
+- [scripts/progressive_model_training.py](scripts/progressive_model_training.py) - Start simple, add complexity
+- [scripts/comprehensive_evaluation.py](scripts/comprehensive_evaluation.py) - Multi-faceted evaluation
 
-**Ready to cure cancer! 🎗️**
+### Documentation:
+- [CRITICAL_LABEL_LEAKAGE.md](CRITICAL_LABEL_LEAKAGE.md) - Full documentation of the bug
+- [REDDIT_RESPONSE_FINAL.md](REDDIT_RESPONSE_FINAL.md) - Honest acknowledgment
+- [COMPLETE_REDESIGN_PLAN.md](COMPLETE_REDESIGN_PLAN.md) - Comprehensive fix strategy
+- [REAL_DATA_COMPLETE.md](REAL_DATA_COMPLETE.md) - This guide
 
 ---
 
-**Last Updated:** 2025-11-23
-**Git Commit:** 7fb8955
-**Notebook Version:** 31 cells
+## Verification Checklist
+
+Before claiming ANY results:
+
+- [ ] Used real genomic sequences from Ensembl
+- [ ] Applied variants using HGVS parser
+- [ ] NO label information in sequence generation
+- [ ] Proper temporal or position-based train/test split
+- [ ] Verified no train/test overlap (checked AlleleIDs)
+- [ ] Tested baseline models first (k-mer, RF)
+- [ ] Started with simplest model, justified complexity
+- [ ] Comprehensive evaluation (not just accuracy)
+- [ ] Compared to random baseline
+- [ ] Checked for 100% accuracy (red flag!)
+- [ ] Error analysis (FP/FN inspection)
+- [ ] External validation (if possible)
+- [ ] Realistic expectations (70-90%, not 100%)
+
+---
+
+## Acknowledgments
+
+**Thank you to the Reddit r/MachineLearning community:**
+- **profesh_amateur** - Found the exact label leakage bug
+- **Dihedralman** - 100% accuracy red flag
+- **everyday847** - Noted docstring says "synthetic"
+- **HasGreatVocabulary** - Recognized LLM-generated data patterns
+- **Leather_Power_1137** - Emphasized verification responsibility
+
+**This is peer review working perfectly.** Open code and reproducibility caught the bug.
+
+---
+
+**Last Updated:** 2025-01-27
+**Status:** Fixed - Ready for real data training
+**Next Milestone:** Retrain with real sequences, document honest results
