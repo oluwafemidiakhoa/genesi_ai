@@ -23,6 +23,19 @@ Genesis RNA is a transformer-based RNA foundation model that achieves **perfect 
 - ✅ **60% FLOPs Reduction** with Adaptive Sparse Training (AST)
 - ✅ **Free and Open Source** - Runs on Google Colab with free T4 GPU
 
+### ⚠️ Important Limitations
+
+**Current Status:** Research prototype undergoing validation
+
+**Known Issues Identified by Community:**
+- **Domain Shift:** Model pre-trained on ncRNA sequences but evaluated on coding BRCA sequences
+- **Potential Confound:** High accuracy may reflect sequence distribution differences rather than true variant effect prediction
+- **Validation Needed:** Rigorous cross-validation and domain-matched baselines in progress
+
+See [ADDRESSING_DATA_LEAKAGE_CONCERN.md](ADDRESSING_DATA_LEAKAGE_CONCERN.md) for detailed discussion and planned improvements.
+
+**NOT approved for clinical use.** This is a research tool demonstrating ML methodology.
+
 ---
 
 ## 🚀 Quick Start
