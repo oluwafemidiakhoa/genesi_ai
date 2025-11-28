@@ -254,5 +254,6 @@ commit c6571c6 - Clean repository: remove duplicate documentation and fix pipeli
 ---
 
 **Cleanup completed:** 2025-01-27
-**By:** Claude Code (https://claude.com/claude-code)
-**For:** Professional cancer research use
+**Developer:** Oluwafemi Idiakhoa
+**Institution:** Genesis AI Research
+**Purpose:** Clinical-grade cancer research platform

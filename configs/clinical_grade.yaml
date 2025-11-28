@@ -1,0 +1,209 @@
+# Clinical-Grade Training Configuration for Genesis RNA
+# Developer: Oluwafemi Idiakhoa
+# Institution: Genesis AI Research
+# Purpose: Production-ready cancer variant prediction model
+#
+# Evidence-based configuration following:
+# - RiNALMo (Nature Communications 2025)
+# - DNABERT-2 (ICLR 2024)
+# - Nucleotide Transformer (Nature Methods 2024)
+#
+# Target Performance:
+# - AUC-ROC: >0.85
+# - Sensitivity: >0.90 (pathogenic variants)
+# - Specificity: >0.85 (benign variants)
+
+model:
+  # BASE model: 35M parameters - optimal for 50K ncRNA sequences
+  vocab_size: 9
+  d_model: 512  # Increased from 256 for better capacity
+  n_heads: 8    # Increased from 4
+  n_layers: 8   # Increased from 4
+  dim_ff: 2048  # 4x d_model (standard transformer ratio)
+  max_len: 512
+  dropout: 0.1
+  attention_dropout: 0.1
+  structure_num_labels: 5
+  use_rotary_embeddings: false
+  attention_type: "standard"
+
+training:
+  # ============================================================================
+  # PRE-TRAINING HYPERPARAMETERS (50 epochs on ncRNA)
+  # ============================================================================
+
+  # Batch size optimized for T4 16GB VRAM
+  batch_size: 48  # Increased from 32 - T4 can handle BASE model with FP16
+
+  # Learning rate following RiNALMo best practices
+  learning_rate: 0.0003  # 3e-4 - higher for larger batch + longer training
+
+  # Extended training for small dataset (50K sequences vs RiNALMo's 36M)
+  num_epochs: 50  # Clinical-grade: sufficient for convergence
+
+  # Warmup following RiNALMo
+  warmup_steps: 2000  # Gradual LR ramp for stability
+
+  # Regularization
+  weight_decay: 0.01
+  gradient_clip_norm: 1.0
+
+  # Learning rate scheduling (CRITICAL for performance)
+  lr_scheduler_type: "cosine"  # RiNALMo/DNABERT-2 best practice
+  min_lr_ratio: 0.02  # Decay to 2% of peak (3e-4 → 6e-6)
+
+  # Masked Language Modeling
+  mlm_probability: 0.15
+
+  # Multi-task loss weights
+  # NOTE: For ncRNA pre-training, focus on MLM only
+  # Structure/pairing annotations not available in Ensembl ncRNA
+  mlm_loss_weight: 1.0
+  structure_loss_weight: 0.0  # No annotations
+  pair_loss_weight: 0.0  # No annotations
+
+  # Focal loss (disabled for pre-training, enabled for fine-tuning)
+  use_focal_loss_for_pairs: false
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+  pair_prediction_threshold: 0.35
+
+  # Checkpointing strategy
+  save_steps: 1000
+  eval_steps: 500  # More frequent evaluation for early stopping
+  logging_steps: 100
+  output_dir: "./checkpoints/clinical_grade"
+
+  # Early stopping (NEW - prevent overfitting)
+  early_stopping_patience: 10  # Stop if no improvement for 10 epochs
+  early_stopping_min_delta: 0.001  # Minimum improvement threshold
+  save_top_k_checkpoints: 3  # Keep top-3 best models for ensemble
+
+  # T4 GPU optimization (ESSENTIAL)
+  device: "cuda"
+  mixed_precision: true
+  fp16: true  # Enables T4 Tensor Cores (critical for speed)
+  num_workers: 2
+  prefetch_factor: 2
+
+  # Adaptive Sparse Training (60% FLOPs reduction)
+  use_ast: true
+  ast_target_activation: 0.4  # Train on 40% hardest samples
+  ast_controller_kp: 0.01
+  ast_controller_ki: 0.001
+
+  # Experiment tracking
+  use_wandb: true
+  wandb_project: "genesis-rna-clinical"
+  wandb_entity: null  # Set to your wandb username
+
+  seed: 42
+
+# ============================================================================
+# FINE-TUNING HYPERPARAMETERS (20 epochs on BRCA variants)
+# ============================================================================
+# Use these settings when fine-tuning on clinical variant data
+# Activate with: --config configs/clinical_grade_finetune.yaml
+
+fine_tuning:
+  # Lower learning rate for fine-tuning
+  batch_size: 32  # Smaller for careful learning
+  learning_rate: 0.00001  # 1e-5 - 30x lower than pre-training
+  num_epochs: 20
+  warmup_steps: 500
+
+  # Disable AST - train on ALL clinical variants (data is precious)
+  use_ast: false
+
+  # Enable structure/pairing loss for variant impact
+  mlm_loss_weight: 0.5  # Reduced - focus on structure
+  structure_loss_weight: 1.0
+  pair_loss_weight: 2.0
+
+  # Class imbalance handling
+  use_focal_loss_for_pairs: true
+  focal_alpha: 0.75  # Prioritize pathogenic class
+  focal_gamma: 2.0
+
+  # Enhanced regularization (prevent overfitting on small clinical dataset)
+  dropout: 0.15  # Increased from 0.1
+  weight_decay: 0.05  # Increased from 0.01
+  label_smoothing: 0.05  # Regularize hard labels
+
+  # Class weights for imbalanced clinical data
+  use_class_weights: true
+  class_weight_pathogenic: 0.6  # Prioritize sensitivity
+  class_weight_benign: 0.4
+
+# ============================================================================
+# VALIDATION STRATEGY
+# ============================================================================
+validation:
+  # Temporal split for clinical realism
+  use_temporal_split: true
+  temporal_cutoff_year: 2023  # Train on <2023, validate on 2023+
+
+  # K-fold cross-validation
+  use_cross_validation: true
+  num_folds: 5
+  stratified: true  # Ensure balanced pathogenic/benign in each fold
+
+  # Independent test set
+  test_split: 0.2  # 20% held out for final evaluation
+
+  # Metrics to track
+  primary_metric: "auc_roc"  # Main optimization target
+  secondary_metrics:
+    - "sensitivity"  # Recall for pathogenic (>0.90 target)
+    - "specificity"  # Recall for benign (>0.85 target)
+    - "ppv"  # Positive predictive value
+    - "npv"  # Negative predictive value
+    - "mcc"  # Matthews correlation coefficient
+    - "calibration_error"  # Predicted vs observed probabilities
+
+# ============================================================================
+# MODEL DISTRIBUTION
+# ============================================================================
+distribution:
+  # HuggingFace Hub (primary)
+  huggingface_repo: "oluwafemi/genesis-rna-base"
+  push_to_hub: false  # Set to true when ready to publish
+
+  # Google Drive (backup for Colab users)
+  google_drive_id: null  # Set after uploading to Drive
+
+  # Zenodo (research archival with DOI)
+  zenodo_doi: null  # Will be assigned upon publication
+
+  # Model card metadata (required for HuggingFace)
+  model_card:
+    language: "RNA"
+    license: "mit"
+    tags:
+      - "rna"
+      - "genomics"
+      - "cancer"
+      - "brca"
+      - "transformer"
+      - "foundation-model"
+    task: "variant-effect-prediction"
+    intended_use: "Research use only - not for clinical diagnosis"
+    performance:
+      auc_roc: null  # Will be updated after training
+      sensitivity: null
+      specificity: null
+
+# ============================================================================
+# CLINICAL COMPLIANCE
+# ============================================================================
+compliance:
+  research_use_only: true
+  not_fda_approved: true
+  not_ce_marked: true
+  disclaimer: |
+    This model is for RESEARCH USE ONLY.
+    NOT for clinical diagnosis or treatment decisions.
+    For clinical variant interpretation, consult:
+    - Board-certified genetic counselors
+    - ACMG/AMP variant classification guidelines
+    - Expert panel review (ENIGMA, ClinGen)
